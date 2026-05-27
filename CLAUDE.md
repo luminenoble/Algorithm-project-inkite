@@ -41,38 +41,52 @@
 ├── CLAUDE.md                       # 本文件
 ├── README.md                       # 对外项目简介
 ├── LICENSE
+├── firebase.json                   # Firebase 部署/Emulator 配置（T1.1）
+├── .firebaserc                     # 项目别名（T1.1）
+├── .gitignore
+├── google-services.json            # 临时落脚点，T1.3 后移至 app-storage/android/app/
 ├── docs/
 │   ├── git-format.md               # 提交信息与分支命名规范（强制）
+│   ├── dependencies.md             # 本地工具链安装指引（T1.1）
 │   ├── section1-TODO.md            # P1 全程任务清单（T1.1 – T1.11）
+│   ├── P1/
+│   │   ├── stage0/                 # 阶段 0 子任务文档（T1.1.md, T1.2.md, ...）
+│   │   └── stage1/                 # 后续阶段
 │   ├── schema-design/
 │   │   └── design.md               # Firestore 数据模型（D3 冻结后唯一事实来源）
 │   └── tmp/                        # 立项阶段资料
 │       ├── 分工-初步.md
 │       └── Inkite_可行性与资金分析.md
-└── (Flutter 工程将放置于仓库根，由 T1.3 初始化)
+└── app-storage/                    # Flutter 工程根目录，由 T1.3 `flutter create app-storage` 初始化
 ```
 
-未来 Flutter 工程目录约定（T1.3 起逐步建立）：
+Flutter 工程内部目录约定（`app-storage/` 下，T1.3 起逐步建立）：
 
 ```
-lib/
-├── main.dart
-├── firebase_options.dart           # FlutterFire CLI 生成
-└── features/
-    ├── auth/                       # P1
-    ├── writing/                    # P2
-    ├── square/                     # P3
-    ├── gallery/                    # P4
-    └── character/                  # 模块 G 嵌入
-android/app/
-├── google-services.json            # 已 gitignore
-└── google-services.json.example    # 仓库内仅保留模板
-firebase.json
-.firebaserc
+app-storage/
+├── lib/
+│   ├── main.dart
+│   ├── firebase_options.dart       # FlutterFire CLI 生成
+│   └── features/
+│       ├── auth/                   # P1
+│       ├── writing/                # P2
+│       ├── square/                 # P3
+│       ├── gallery/                # P4
+│       └── character/              # 模块 G 嵌入
+├── android/app/
+│   ├── google-services.json        # 已 gitignore（T1.3 后从仓库根移入）
+│   └── google-services.json.example  # 仓库内仅保留模板
+├── pubspec.yaml
+└── analysis_options.yaml
+```
+
+Firebase 后端配置文件（仓库根，T1.4 起补齐）：
+
+```
 firestore.rules
 storage.rules
 firestore.indexes.json
-functions/                          # Cloud Functions
+functions/                          # Cloud Functions 源码
 ```
 
 ---
@@ -112,6 +126,15 @@ functions/                          # Cloud Functions
 ### 5. 当前阶段定位
 
 当前正在执行 **阶段 0（D1–D3）奠基期**，重点是 T1.1 – T1.4。Flutter 工程尚未初始化，Cloud Functions 尚未存在；此阶段以**文档与配置**为主，不要凭空创建源码目录。
+
+每个子任务（T1.1 / T1.2 / ...）在 `docs/P1/stage0/T1.x.md` 留一份开发记录，覆盖：已交付物、需人工执行的 Console/CLI 动作、验收清单。子任务完成后**提交前必须等待用户审核**，绝不自行 commit。
+
+### 6. Firebase 套餐前置
+
+`inkite-demo` 是 2026 年新建项目。**Cloud Storage for Firebase 与 Cloud Functions 均要求 Blaze（按量付费）套餐才能启用**（Auth + Firestore 仍可在 Spark 上跑）。
+
+- 升 Blaze 前先在 Google Cloud Billing 设月预算 **¥50** + 50/90/100% 告警，demo 量级实际消耗近 0。
+- 本地开发阶段一律走 Firebase Emulator Suite，避免产生云端费用。
 
 ---
 
