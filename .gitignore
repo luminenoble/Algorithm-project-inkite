@@ -1,1 +1,47 @@
-# 文档
+# ===== Flutter / Dart =====
+**/build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+**/generated_plugin_registrant.dart
+ios/Flutter/.last_build_id
+
+# ===== Android =====
+*.iml
+.idea/
+.gradle/
+local.properties
+**/android/.gradle/
+**/android/captures/
+
+# ===== Firebase 机密（绝不入仓） =====
+google-services.json
+GoogleService-Info.plist
+firebase-debug.log
+.firebase/
+firebase-tools-debug.log
+service-account*.json
+serviceAccountKey*.json
+
+# ===== Cloud Functions =====
+functions/node_modules/
+functions/.env
+functions/.runtimeconfig.json
+functions/lib/
+
+# ===== Node =====
+node_modules/
+
+# ===== Env / secrets =====
+*.env
+.env.*
+!.env.example
+
+# ===== OS / Editor =====
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
