@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/login_screen.dart';
-import '../features/shell/main_shell.dart';
-import '../features/writing/writing_screen.dart';
-import '../features/square/square_screen.dart';
 import '../features/gallery/gallery_screen.dart';
 import '../features/me/me_screen.dart';
+import '../features/shell/main_shell.dart';
+import '../features/square/square_screen.dart';
+import '../features/writing/writing_screen.dart';
+import '../services/auth_service.dart';
 
 /// 路由守卫：未登录跳 /login，已登录在 /login 时跳回 /writing。
-/// T1.5 会接入完整的 AuthService，本 stub 仅依赖 FirebaseAuth.currentUser。
 String? _redirect(BuildContext context, GoRouterState state) {
-  final loggedIn = FirebaseAuth.instance.currentUser != null;
+  final loggedIn = AuthService.instance.currentUser != null;
   final goingToLogin = state.matchedLocation == '/login';
   if (!loggedIn && !goingToLogin) return '/login';
   if (loggedIn && goingToLogin) return '/writing';
@@ -40,9 +39,9 @@ final appRouter = GoRouter(
   ],
 );
 
-/// 把 FirebaseAuth.authStateChanges 桥接到 GoRouter 的 refreshListenable。
+/// 把 AuthService.authStateChanges 桥接到 GoRouter 的 refreshListenable。
 class _AuthRefresh extends ChangeNotifier {
   _AuthRefresh() {
-    FirebaseAuth.instance.authStateChanges().listen((_) => notifyListeners());
+    AuthService.instance.authStateChanges.listen((_) => notifyListeners());
   }
 }
