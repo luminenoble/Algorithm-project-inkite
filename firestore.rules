@@ -1,0 +1,138 @@
+rules_version = '2';
+
+// Inkite — Firestore 安全规则基线（T1.4 阶段 0 dev 版）
+//
+// 设计原则（与 docs/schema-design/design.md「安全规则要点」对齐）：
+//   - 鉴权：所有读写默认要登录；公开 story 由 visibility 字段决定可读性
+//   - 所有权：用户只能写自己拥有的资源；点赞用 uid 作文档 ID 保证幂等
+//   - 计数：likeCount / commentCount / hotScore 仅 Cloud Functions 可写
+//     （前端 update 时不能动这些字段）
+//   - 运营资源：challenges / origami / charactersCache 客户端只读，
+//     由 Console 或 CF 写入
+//
+// T1.10 会进一步收紧：限制 schema 字段、限制 visibility 枚举、
+// 删除 _probe 集合规则、加入字段类型/长度校验。
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================
+    // 工具函数
+    // ============================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // 写入时，判断这些 CF-only 字段是否被前端动过
+    function counterFieldsUntouched() {
+      return !(
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['likeCount', 'commentCount', 'hotScore'])
+      );
+    }
+
+    // create 时禁止前端自行设置非零计数（必须从 0 起步，由 CF 增量）
+    function counterFieldsZeroOnCreate() {
+      return request.resource.data.get('likeCount', 0) == 0
+          && request.resource.data.get('commentCount', 0) == 0
+          && request.resource.data.get('hotScore', 0) == 0;
+    }
+
+    // ============================================================
+    // users/{uid} —— 用户档案
+    // ============================================================
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(uid);
+      allow delete: if false;
+    }
+
+    // ============================================================
+    // challenges/{challengeId} —— 官方挑战，客户端只读
+    // ============================================================
+    match /challenges/{challengeId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ============================================================
+    // stories/{storyId} —— 故事
+    // ============================================================
+    match /stories/{storyId} {
+
+      allow read: if isSignedIn() && (
+        resource.data.visibility == 'public'
+        || request.auth.uid == resource.data.authorId
+      );
+
+      allow create: if isSignedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && counterFieldsZeroOnCreate();
+
+      allow update: if isSignedIn()
+        && resource.data.authorId == request.auth.uid
+        && counterFieldsUntouched();
+
+      allow delete: if isSignedIn()
+        && resource.data.authorId == request.auth.uid;
+
+      // --------------------------------------------------------
+      // stories/{storyId}/comments/{commentId} —— 评论子集合
+      // --------------------------------------------------------
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn()
+          && request.resource.data.authorId == request.auth.uid;
+        allow update: if false;  // MVP 不允许编辑评论
+        allow delete: if isSignedIn()
+          && resource.data.authorId == request.auth.uid;
+      }
+
+      // --------------------------------------------------------
+      // stories/{storyId}/likes/{likeUid} —— 点赞子集合
+      // 文档 ID = uid，操作者必须就是该 uid，自动幂等
+      // --------------------------------------------------------
+      match /likes/{likeUid} {
+        allow read: if isSignedIn();
+        allow create, delete: if isOwner(likeUid);
+        allow update: if false;
+      }
+    }
+
+    // ============================================================
+    // origami/{origamiId} —— AI 折纸藏品实例
+    // 仅 Cloud Function `generateOrigami` 写，客户端只读
+    // ============================================================
+    match /origami/{origamiId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ============================================================
+    // charactersCache/{characterKey} —— 模块 G 角色查询缓存
+    // 由模块 G 后端或 Cloud Function 写，客户端只读
+    // ============================================================
+    match /charactersCache/{characterKey} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ============================================================
+    // _probe/{uid} —— T1.3 端到端连通性探针
+    // 仅本人对自己 uid 文档可读写；T1.10 收紧规则时移除
+    // ============================================================
+    match /_probe/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // 兜底：未声明集合一律拒绝
+    // ============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

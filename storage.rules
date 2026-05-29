@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// Inkite — Cloud Storage 安全规则基线（T1.4 阶段 0 dev 版）
+//
+// 设计原则：
+//   - origami/*：AI 折纸藏品图片，所有人可读（演示需求），仅 CF 写
+//   - users/{uid}/*：用户上传的资源（如头像），本人写、所有人读
+//   - 其他路径一律拒绝
+//
+// T1.10 会进一步限制：MIME 类型、大小上限、防滥用。
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // origami 图片：CF generateOrigami 写、客户端只读
+    match /origami/{file=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 用户私有目录：本人可写、所有人可读（如头像）
+    match /users/{uid}/{file=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // 兜底：其他路径一律拒绝
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
