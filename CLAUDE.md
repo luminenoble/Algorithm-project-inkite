@@ -85,8 +85,7 @@ app-storage/
 │   ├── flutter/
 │   └── runner/                     # MSVC native runner
 ├── android/app/
-│   ├── google-services.json        # 已 gitignore，由 flutterfire configure 同步
-│   └── google-services.json.example  # 仓库内仅保留模板
+│   └── google-services.json        # 入仓（Firebase Android 客户端公开配置，非密钥）
 ├── test/widget_test.dart
 ├── pubspec.yaml
 └── analysis_options.yaml
@@ -131,7 +130,8 @@ functions/                          # Cloud Functions 源码
 ### 3. 安全与机密
 
 - 不在 Firestore 自行存储密码或鉴权凭证，全部交给 Firebase Auth。
-- `google-services.json`、Replicate API key、Firebase service account 等机密**绝不入仓**；仓库内仅保留 `.example` 模板。
+- **真正的机密绝不入仓**：Firebase service account / Admin SDK 凭证（`service-account*.json` / `serviceAccountKey*.json`）、Replicate API key、CF 环境变量（`functions/.env`）。
+- **`google-services.json` 入仓**：它是 Android 客户端公开配置（按 Firebase 官方说法，API key 不是 secret，访问控制由 Security Rules 强制）。私有仓 + 单 Firebase 项目 (`inkite-demo`) 下入仓便于成员零摩擦克隆即跑。若日后转公开仓或多环境项目，再切回 gitignore。
 - 任何"看起来像密钥"的字符串在提交前需再次确认。
 
 ### 4. 任务执行原则

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "608619342633",
+    "project_id": "inkite-demo",
+    "storage_bucket": "inkite-demo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:608619342633:android:2bf0d0f18c41328899a538",
+        "android_client_info": {
+          "package_name": "com.inkite.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEdPtTe_ZJhXMgU3FrmE2I3rwcJr6sjz8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
