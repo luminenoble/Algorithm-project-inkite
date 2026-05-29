@@ -142,15 +142,32 @@ functions/                          # Cloud Functions 源码
 
 ### 5. 当前阶段定位
 
-当前正在执行 **阶段 0（D1–D3）奠基期**。T1.1 / T1.2 / T1.3 已交付（commit `8ca1cb0` → `d8ee46a` → `10142cf` → `d636e9f`），剩 T1.4（Firestore / Storage 规则基线 + Emulator）。Cloud Functions 尚未存在。
+当前正在执行 **阶段 1（D4–D12）并行开发期**。阶段 0 已收尾（T1.1 / T1.2 / T1.3 / T1.4 全部交付，最后 commit `7270f43`）。阶段 1 进度：T1.5 账号系统已交付 + Windows 端验证通过（commit `26fd86b`）；T1.6 数据访问层 Repository + 模型已交付。T1.4 的 `firestore.rules` / `storage.rules` 已实际部署到 `inkite-demo` 线上。Cloud Functions 尚未存在（T1.7 / T1.8 待做）。
 
-每个子任务（T1.1 / T1.2 / ...）在 `docs/P1/stage0/T1.x.md` 留一份开发记录，覆盖：已交付物、需人工执行的 Console/CLI 动作、验收清单。子任务完成后**提交前必须等待用户审核**，绝不自行 commit（用户显式授权除外）。
+每个子任务（T1.1 / T1.2 / ...）在 `docs/P1/stageN/T1.x.md` 留一份开发记录，覆盖：已交付物、需人工执行的 Console/CLI 动作、验收清单。子任务完成后**提交前必须等待用户审核**，绝不自行 commit（用户显式授权除外）。
 
-### 6. Firebase 套餐前置
+### 6. Firebase 套餐与扣款触发点
 
 `inkite-demo` 是 2026 年新建项目。**Cloud Storage for Firebase 与 Cloud Functions 均要求 Blaze（按量付费）套餐才能启用**（Auth + Firestore 仍可在 Spark 上跑）。已升 Blaze，月预算 ¥50 + 三档告警已设。
 
 - 本地开发阶段一律走 Firebase Emulator Suite，避免产生云端费用。
+- 扣款发生在**操作时即时计费、月底结算**，免费额度内不掏钱。各服务触发点：
+
+| 服务 | 何时记一笔 | demo 体量下扣款？ |
+|------|-----------|-------------------|
+| Auth（匿名 / 邮箱密码） | 永久免费 | 否 |
+| Firestore reads | 每"返回的文档" +1（本地缓存命中不算；监听只在初次加载与变化时算） | 远在 50K/天免费内 |
+| Firestore writes / deletes | 每次 `set` / `update` / `add` / `delete` +1 | 远在 20K/天免费内 |
+| Firestore 存储 / 出网 | 月度按持有量 + 流量计 | 远在 1 GB / 10 GB-月内 |
+| Storage 上传（CF 写折纸图，T1.8） | Class A 操作 +1 | 远在 20K/天内 |
+| Storage 下载（`Image.network`） | Class B 操作 +1 + 出网流量 | 远在 50K/天内 |
+| Functions 调用 / 执行时长 | 每次 invocation + 计耗时 | 远在 2M/月 + 400K GB-秒内 |
+| **Cloud Build**（每次 `firebase deploy --only functions`） | 每次构建按分钟计 | 120 min/天免费内 |
+| **Artifact Registry**（Functions 容器镜像） | 部署后镜像**长期挂着**按 GB·月 | ≥ 0.5 GB 时月几分钱 |
+| Replicate Flux Schnell（T1.8 实拍） | 每张 ≈ $0.003 | 演示当天 1 次 |
+
+- 真正会跑出钱的两项：**Functions 部署后的镜像存储** + **演示当天的 Replicate 实拍**，总额远不到 ¥50 预算。
+- 想 100% 零成本：T1.7 / T1.8 期间一律走 emulator，**不 deploy**，仅在 T1.11 演示前 deploy 一次正式版。
 
 ### 7. 客户端交付与跨平台
 
