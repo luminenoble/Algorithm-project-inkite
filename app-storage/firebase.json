@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"inkite-demo","appId":"1:608619342633:android:2bf0d0f18c41328899a538","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"inkite-demo","configurations":{"android":"1:608619342633:android:2bf0d0f18c41328899a538","windows":"1:608619342633:web:2dc32118f0b71d7b99a538"}}}}}}
