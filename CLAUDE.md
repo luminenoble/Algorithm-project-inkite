@@ -6,7 +6,9 @@
 
 ## 项目概要
 
-**Inkite** —— 融合创意写作与社区分享的 Android 移动应用。20 天、5 人团队的课程 demo，目标是覆盖全部功能骨架、可现场演示核心主路径。
+**Inkite** —— 融合创意写作与社区分享的应用。20 天、5 人团队的课程 demo，目标是覆盖全部功能骨架，**最终以演示视频形式交付**（非现场操作）。
+
+**交付形态**：**Windows 桌面应用为主**（同一份 Flutter 代码可编译为 Android APK 备用）。T1.3 已在 Windows 上跑通 `flutter run -d windows` 与匿名登录 + Firestore 探针。pivot 决策记录见 `docs/dependencies.md` 末尾「Windows 桌面实测环境与稳定跑法」附录。
 
 核心功能：
 
@@ -26,11 +28,11 @@
 - P5 — 见 `docs/` 后续补充
 
 **关键里程碑**（P1 视角）：
-- D3 Firestore schema 冻结 + Hello-App 可跑
+- D3 Firestore schema 冻结 + Hello-App 可跑（Windows 桌面端）
 - D12 账号系统 + 数据访问层 + Functions 骨架可独立运行
 - D16 AI 生成与排行榜端到端打通，功能冻结
 - D19 安全规则收紧、种子数据就绪、构建产物冻结
-- D20 演示
+- D20 演示视频录制 + 交付（Windows release 构建为主，可附 Android APK）
 
 ---
 
@@ -41,44 +43,59 @@
 ├── CLAUDE.md                       # 本文件
 ├── README.md                       # 对外项目简介
 ├── LICENSE
-├── firebase.json                   # Firebase 部署/Emulator 配置（T1.1）
+├── firebase.json                   # Firebase CLI 部署/Emulator 配置（T1.1）
 ├── .firebaserc                     # 项目别名（T1.1）
 ├── .gitignore
-├── google-services.json            # 临时落脚点，T1.3 后移至 app-storage/android/app/
+├── .editorconfig                   # 跨编辑器风格统一
 ├── docs/
 │   ├── git-format.md               # 提交信息与分支命名规范（强制）
-│   ├── dependencies.md             # 本地工具链安装指引（T1.1）
+│   ├── dependencies.md             # 本地工具链安装指引（含 Windows 实测附录）
 │   ├── section1-TODO.md            # P1 全程任务清单（T1.1 – T1.11）
 │   ├── P1/
-│   │   ├── stage0/                 # 阶段 0 子任务文档（T1.1.md, T1.2.md, ...）
+│   │   ├── stage0/                 # 阶段 0 子任务文档（T1.1.md, T1.2.md, T1.3.md）
 │   │   └── stage1/                 # 后续阶段
 │   ├── schema-design/
 │   │   └── design.md               # Firestore 数据模型（D3 冻结后唯一事实来源）
 │   └── tmp/                        # 立项阶段资料
 │       ├── 分工-初步.md
 │       └── Inkite_可行性与资金分析.md
-└── app-storage/                    # Flutter 工程根目录，由 T1.3 `flutter create app-storage` 初始化
+└── app-storage/                    # Flutter 工程根目录（T1.3 初始化）
 ```
 
-Flutter 工程内部目录约定（`app-storage/` 下，T1.3 起逐步建立）：
+Flutter 工程内部目录（`app-storage/` 下）：
 
 ```
 app-storage/
+├── firebase.json                   # FlutterFire CLI 配置状态（与仓库根的 firebase.json 用途不同）
 ├── lib/
-│   ├── main.dart
-│   ├── firebase_options.dart       # FlutterFire CLI 生成
+│   ├── main.dart                   # Firebase.initializeApp + MaterialApp.router
+│   ├── firebase_options.dart       # FlutterFire CLI 生成（含 android + windows 平台）
+│   ├── routing/
+│   │   └── app_router.dart         # GoRouter + authStateChanges 守卫
 │   └── features/
 │       ├── auth/                   # P1
+│       ├── shell/                  # 底部 Tab 主框架
 │       ├── writing/                # P2
 │       ├── square/                 # P3
 │       ├── gallery/                # P4
+│       ├── me/                     # 我的 Tab
 │       └── character/              # 模块 G 嵌入
+├── windows/                        # Windows 桌面平台（主交付）
+│   ├── CMakeLists.txt
+│   ├── flutter/
+│   └── runner/                     # MSVC native runner
 ├── android/app/
-│   ├── google-services.json        # 已 gitignore（T1.3 后从仓库根移入）
+│   ├── google-services.json        # 已 gitignore，由 flutterfire configure 同步
 │   └── google-services.json.example  # 仓库内仅保留模板
+├── test/widget_test.dart
 ├── pubspec.yaml
 └── analysis_options.yaml
 ```
+
+两个 `firebase.json` 区分：
+
+- `./firebase.json`（仓库根）：**Firebase CLI** 用，声明 `firestore.rules` / `storage.rules` / `firestore.indexes.json` / `functions/` 路径与 Emulator 端口
+- `app-storage/firebase.json`：**FlutterFire CLI** 用，存储已配置的平台元数据（android / windows 的 appId 等），不要手工编辑
 
 Firebase 后端配置文件（仓库根，T1.4 起补齐）：
 
@@ -125,16 +142,23 @@ functions/                          # Cloud Functions 源码
 
 ### 5. 当前阶段定位
 
-当前正在执行 **阶段 0（D1–D3）奠基期**，重点是 T1.1 – T1.4。Flutter 工程尚未初始化，Cloud Functions 尚未存在；此阶段以**文档与配置**为主，不要凭空创建源码目录。
+当前正在执行 **阶段 0（D1–D3）奠基期**。T1.1 / T1.2 / T1.3 已交付（commit `8ca1cb0` → `d8ee46a` → `10142cf` → `d636e9f`），剩 T1.4（Firestore / Storage 规则基线 + Emulator）。Cloud Functions 尚未存在。
 
-每个子任务（T1.1 / T1.2 / ...）在 `docs/P1/stage0/T1.x.md` 留一份开发记录，覆盖：已交付物、需人工执行的 Console/CLI 动作、验收清单。子任务完成后**提交前必须等待用户审核**，绝不自行 commit。
+每个子任务（T1.1 / T1.2 / ...）在 `docs/P1/stage0/T1.x.md` 留一份开发记录，覆盖：已交付物、需人工执行的 Console/CLI 动作、验收清单。子任务完成后**提交前必须等待用户审核**，绝不自行 commit（用户显式授权除外）。
 
 ### 6. Firebase 套餐前置
 
-`inkite-demo` 是 2026 年新建项目。**Cloud Storage for Firebase 与 Cloud Functions 均要求 Blaze（按量付费）套餐才能启用**（Auth + Firestore 仍可在 Spark 上跑）。
+`inkite-demo` 是 2026 年新建项目。**Cloud Storage for Firebase 与 Cloud Functions 均要求 Blaze（按量付费）套餐才能启用**（Auth + Firestore 仍可在 Spark 上跑）。已升 Blaze，月预算 ¥50 + 三档告警已设。
 
-- 升 Blaze 前先在 Google Cloud Billing 设月预算 **¥50** + 50/90/100% 告警，demo 量级实际消耗近 0。
 - 本地开发阶段一律走 Firebase Emulator Suite，避免产生云端费用。
+
+### 7. 客户端交付与跨平台
+
+- **主交付平台**：Windows 桌面（`flutter run -d windows` / `flutter build windows`），由 P1 在 Windows + VS 2026 上跑通。**演示视频在 Windows 上录制**。
+- **副平台**：Android（同代码可跑，留作 D17–D19 加分项）。`flutterfire configure` 已同时配好 android + windows 两套 `firebase_options.dart`。
+- **不支持**：iOS / macOS / Linux / Web（demo 范围内不投入）。`firebase_auth` 当前选用方法（**匿名 + 邮箱/密码**）在 Windows 上经 REST 通道工作正常；OAuth 第三方登录不在计划内。
+- **客户端不直接调 `firebase_storage`**：折纸图片由 Cloud Function 生成并写 Storage，客户端只通过 Firestore 拿到 `imageUrl` 用 `Image.network` 显示。避开 Windows 上 `firebase_storage` 支持有限的问题。
+- **Windows 构建踩坑全集**：见 `docs/dependencies.md` 末尾「Windows 桌面实测环境与稳定跑法」附录（VS 2026 + Flutter 3.44 + Firebase C++ SDK 兼容性、Defender 拖慢、CMake 版本拒绝、INSTALL 权限、MSVC 运行库匹配 5 个治本点）。后续任何"Windows 跑不起来"问题先按附录排查。
 
 ---
 
