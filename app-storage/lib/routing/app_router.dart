@@ -7,6 +7,7 @@ import '../features/me/me_screen.dart';
 import '../features/shell/main_shell.dart';
 import '../features/square/square_screen.dart';
 import '../features/writing/challenge_stories_screen.dart';
+import '../features/writing/my_stories_screen.dart';
 import '../features/writing/random_words_screen.dart';
 import '../features/writing/story_editor_screen.dart';
 import '../features/writing/writing_screen.dart';
@@ -52,6 +53,10 @@ final appRouter = GoRouter(
             GoRoute(
               path: 'random',
               builder: (_, _) => const RandomWordsScreen(),
+            ),
+            GoRoute(
+              path: 'mine',
+              builder: (_, _) => const MyStoriesScreen(),
             ),
           ],
         ),

@@ -8,10 +8,16 @@ import '../../services/auth_service.dart';
 
 /// 故事编辑器页面。
 ///
-/// 通过 GoRouter extra 传入参数：
+/// 通过 GoRouter extra 传入参数（互斥两类）：
+///
+/// **新建模式：**
 /// - `mode`: 'official' | 'free' | 'diary' | 'essay' | 'fanfic'
-/// - `challengeId`: (official 模式) 挑战 ID
-/// - `words`: (official 模式) 三词列表
+/// - `challengeId`: (official) 挑战 ID
+/// - `words`: (official) 三词快照
+/// - `inspirationWords`: (free 随机词) 灵感词，仅 UI 显示不入库
+///
+/// **编辑模式：**
+/// - `storyId`: 既有故事 ID → 拉取并预填，提交走 `update`
 class StoryEditorScreen extends StatefulWidget {
   const StoryEditorScreen({super.key, this.extra});
 
@@ -30,17 +36,58 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
   String? _challengeId;
   List<String>? _words;
   List<String>? _inspirationWords;
+  String? _editingStoryId;
+  bool _loading = false;
   bool _submitting = false;
+
+  bool get _isEditMode => _editingStoryId != null;
 
   @override
   void initState() {
     super.initState();
     final extra = widget.extra ?? {};
-    _mode = _parseMode(extra['mode']);
-    _challengeId = extra['challengeId'] as String?;
-    _words = (extra['words'] as List?)?.cast<String>();
-    _inspirationWords =
-        (extra['inspirationWords'] as List?)?.cast<String>();
+    _editingStoryId = extra['storyId'] as String?;
+
+    if (_isEditMode) {
+      _mode = StoryMode.free;
+      _loading = true;
+      _loadExisting();
+    } else {
+      _mode = _parseMode(extra['mode']);
+      _challengeId = extra['challengeId'] as String?;
+      _words = (extra['words'] as List?)?.cast<String>();
+      _inspirationWords =
+          (extra['inspirationWords'] as List?)?.cast<String>();
+    }
+  }
+
+  Future<void> _loadExisting() async {
+    try {
+      final story =
+          await StoryRepository.instance.getById(_editingStoryId!);
+      if (!mounted) return;
+      if (story == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('故事不存在或已删除')),
+        );
+        context.go('/writing/mine');
+        return;
+      }
+      setState(() {
+        _titleController.text = story.title;
+        _bodyController.text = story.body;
+        _mode = story.mode;
+        _challengeId = story.challengeId;
+        _words = story.words;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('加载失败：$e')),
+      );
+      setState(() => _loading = false);
+    }
   }
 
   StoryMode _parseMode(Object? raw) {
@@ -63,35 +110,47 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     setState(() => _submitting = true);
 
     try {
-      final uid = AuthService.instance.currentUid!;
-      final profile = await UserRepository.instance.getProfile(uid);
-      final authorName = profile?.displayName ?? '';
+      if (_isEditMode) {
+        await StoryRepository.instance.update(
+          _editingStoryId!,
+          title: _titleController.text.trim(),
+          body: _bodyController.text.trim(),
+          visibility:
+              publish ? StoryVisibility.public : StoryVisibility.private,
+          publishedToSquare: publish,
+        );
+      } else {
+        final uid = AuthService.instance.currentUid!;
+        final profile = await UserRepository.instance.getProfile(uid);
+        final authorName = profile?.displayName ?? '';
 
-      final story = Story(
-        id: '',
-        authorId: uid,
-        authorName: authorName,
-        title: _titleController.text.trim(),
-        body: _bodyController.text.trim(),
-        mode: _mode,
-        challengeId: _challengeId,
-        words: _words,
-        visibility: publish ? StoryVisibility.public : StoryVisibility.private,
-        publishedToSquare: publish,
-        likeCount: 0,
-        commentCount: 0,
-        hotScore: 0,
-        createdAt: null,
-        updatedAt: null,
-      );
+        final story = Story(
+          id: '',
+          authorId: uid,
+          authorName: authorName,
+          title: _titleController.text.trim(),
+          body: _bodyController.text.trim(),
+          mode: _mode,
+          challengeId: _challengeId,
+          words: _words,
+          visibility:
+              publish ? StoryVisibility.public : StoryVisibility.private,
+          publishedToSquare: publish,
+          likeCount: 0,
+          commentCount: 0,
+          hotScore: 0,
+          createdAt: null,
+          updatedAt: null,
+        );
 
-      await StoryRepository.instance.create(story);
+        await StoryRepository.instance.create(story);
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(publish ? '已发布到广场' : '草稿已保存')),
       );
-      context.go('/writing');
+      context.go(_isEditMode ? '/writing/mine' : '/writing');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -104,27 +163,36 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final backRoute = _isEditMode ? '/writing/mine' : '/writing';
+    final title = _isEditMode
+        ? '编辑故事'
+        : (_mode == StoryMode.official ? '官方挑战' : '自由创作');
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/writing'),
+          onPressed: () => context.go(backRoute),
         ),
-        title: Text(_mode == StoryMode.official ? '官方挑战' : '自由创作'),
+        title: Text(title),
         actions: [
           TextButton(
-            onPressed: _submitting ? null : () => _submit(publish: false),
+            onPressed: (_submitting || _loading)
+                ? null
+                : () => _submit(publish: false),
             child: const Text('保存草稿'),
           ),
           const SizedBox(width: 8),
           FilledButton(
-            onPressed: _submitting ? null : () => _submit(publish: true),
+            onPressed: (_submitting || _loading)
+                ? null
+                : () => _submit(publish: true),
             child: const Text('发布'),
           ),
           const SizedBox(width: 12),
         ],
       ),
-      body: _submitting
+      body: (_loading || _submitting)
           ? const Center(child: CircularProgressIndicator())
           : Form(
               key: _formKey,

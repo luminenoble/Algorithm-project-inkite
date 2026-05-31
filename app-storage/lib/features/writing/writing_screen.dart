@@ -5,6 +5,7 @@ import '../../data/models/challenge.dart';
 import '../../data/models/story.dart';
 import '../../data/repositories/challenge_repository.dart';
 import '../../data/repositories/story_repository.dart';
+import '../../services/auth_service.dart';
 
 /// 写作 Tab 落地页：官方挑战入口 + 自由创作入口。
 class WritingScreen extends StatelessWidget {
@@ -20,6 +21,8 @@ class WritingScreen extends StatelessWidget {
           _OfficialChallengeCard(),
           const SizedBox(height: 16),
           _FreeModeCard(),
+          const SizedBox(height: 16),
+          _MyStoriesCard(),
         ],
       ),
     );
@@ -249,6 +252,59 @@ class _FreeModeCard extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "我的故事"入口卡片：实时显示当前用户已写故事数，点击跳列表。
+class _MyStoriesCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final uid = AuthService.instance.currentUid;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.go('/writing/mine'),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              const Icon(Icons.menu_book_outlined, color: Color(0xFF2B2622)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '我的故事',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (uid != null)
+                      StreamBuilder<List<Story>>(
+                        stream:
+                            StoryRepository.instance.streamMyStories(uid),
+                        builder: (context, snap) {
+                          final count = snap.data?.length ?? 0;
+                          return Text(
+                            '共 $count 篇',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF6B6258),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF6B6258)),
+            ],
+          ),
         ),
       ),
     );
