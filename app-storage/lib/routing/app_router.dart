@@ -6,6 +6,7 @@ import '../features/gallery/gallery_screen.dart';
 import '../features/me/me_screen.dart';
 import '../features/shell/main_shell.dart';
 import '../features/square/square_screen.dart';
+import '../features/writing/challenge_stories_screen.dart';
 import '../features/writing/story_editor_screen.dart';
 import '../features/writing/writing_screen.dart';
 import '../services/auth_service.dart';
@@ -39,6 +40,12 @@ final appRouter = GoRouter(
               path: 'editor',
               builder: (_, state) => StoryEditorScreen(
                 extra: state.extra as Map<String, dynamic>?,
+              ),
+            ),
+            GoRoute(
+              path: 'challenge/:id',
+              builder: (_, state) => ChallengeStoriesScreen(
+                challengeId: state.pathParameters['id']!,
               ),
             ),
           ],
