@@ -1,0 +1,260 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../data/models/story.dart';
+import '../../data/repositories/story_repository.dart';
+import '../../data/repositories/user_repository.dart';
+import '../../services/auth_service.dart';
+
+/// 故事编辑器页面。
+///
+/// 通过 GoRouter extra 传入参数：
+/// - `mode`: 'official' | 'free' | 'diary' | 'essay' | 'fanfic'
+/// - `challengeId`: (official 模式) 挑战 ID
+/// - `words`: (official 模式) 三词列表
+class StoryEditorScreen extends StatefulWidget {
+  const StoryEditorScreen({super.key, this.extra});
+
+  final Map<String, dynamic>? extra;
+
+  @override
+  State<StoryEditorScreen> createState() => _StoryEditorScreenState();
+}
+
+class _StoryEditorScreenState extends State<StoryEditorScreen> {
+  final _titleController = TextEditingController();
+  final _bodyController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  late StoryMode _mode;
+  String? _challengeId;
+  List<String>? _words;
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final extra = widget.extra ?? {};
+    _mode = _parseMode(extra['mode']);
+    _challengeId = extra['challengeId'] as String?;
+    _words = (extra['words'] as List?)?.cast<String>();
+  }
+
+  StoryMode _parseMode(Object? raw) {
+    final s = raw?.toString();
+    return StoryMode.values.firstWhere(
+      (m) => m.name == s,
+      orElse: () => StoryMode.free,
+    );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _bodyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit({required bool publish}) async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _submitting = true);
+
+    try {
+      final uid = AuthService.instance.currentUid!;
+      final profile = await UserRepository.instance.getProfile(uid);
+      final authorName = profile?.displayName ?? '';
+
+      final story = Story(
+        id: '',
+        authorId: uid,
+        authorName: authorName,
+        title: _titleController.text.trim(),
+        body: _bodyController.text.trim(),
+        mode: _mode,
+        challengeId: _challengeId,
+        words: _words,
+        visibility: publish ? StoryVisibility.public : StoryVisibility.private,
+        publishedToSquare: publish,
+        likeCount: 0,
+        commentCount: 0,
+        hotScore: 0,
+        createdAt: null,
+        updatedAt: null,
+      );
+
+      await StoryRepository.instance.create(story);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(publish ? '已发布到广场' : '草稿已保存')),
+      );
+      context.go('/writing');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存失败：$e')),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/writing'),
+        ),
+        title: Text(_mode == StoryMode.official ? '官方挑战' : '自由创作'),
+        actions: [
+          TextButton(
+            onPressed: _submitting ? null : () => _submit(publish: false),
+            child: const Text('保存草稿'),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: _submitting ? null : () => _submit(publish: true),
+            child: const Text('发布'),
+          ),
+          const SizedBox(width: 12),
+        ],
+      ),
+      body: _submitting
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  if (_words != null && _words!.isNotEmpty) ...[
+                    _ChallengeWordsBar(words: _words!),
+                    const SizedBox(height: 16),
+                  ],
+                  _ModeSelector(
+                    mode: _mode,
+                    locked: _mode == StoryMode.official,
+                    onChanged: (m) => setState(() => _mode = m),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: const InputDecoration(
+                      labelText: '标题',
+                      hintText: '给你的故事起个名字',
+                      border: OutlineInputBorder(),
+                    ),
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? '请输入标题' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _bodyController,
+                    decoration: const InputDecoration(
+                      labelText: '正文',
+                      hintText: '开始你的故事……',
+                      border: OutlineInputBorder(),
+                      alignLabelWithHint: true,
+                    ),
+                    maxLines: null,
+                    minLines: 12,
+                    style: const TextStyle(fontSize: 16, height: 1.75),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? '请输入正文' : null,
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+/// 官方挑战三词提示栏。
+class _ChallengeWordsBar extends StatelessWidget {
+  const _ChallengeWordsBar({required this.words});
+  final List<String> words;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F1E8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE7E0D0)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.auto_awesome, size: 20, color: Color(0xFF9A2D1F)),
+          const SizedBox(width: 12),
+          Text(
+            '挑战词：',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFF6B6258),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ...words.map((w) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Chip(
+                  label: Text(w, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  visualDensity: VisualDensity.compact,
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+/// 故事模式选择器。
+class _ModeSelector extends StatelessWidget {
+  const _ModeSelector({
+    required this.mode,
+    required this.locked,
+    required this.onChanged,
+  });
+
+  final StoryMode mode;
+  final bool locked;
+  final ValueChanged<StoryMode> onChanged;
+
+  static const _labels = {
+    StoryMode.official: '官方挑战',
+    StoryMode.free: '自由',
+    StoryMode.diary: '日记',
+    StoryMode.essay: '随笔',
+    StoryMode.fanfic: '同人',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    if (locked) {
+      return Row(
+        children: [
+          Text('模式：', style: Theme.of(context).textTheme.bodyMedium),
+          Chip(label: Text(_labels[mode] ?? mode.name)),
+        ],
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text('模式：', style: Theme.of(context).textTheme.bodyMedium),
+        for (final entry in _labels.entries)
+          if (entry.key != StoryMode.official)
+            ChoiceChip(
+              label: Text(entry.value),
+              selected: mode == entry.key,
+              onSelected: (selected) {
+                if (selected) onChanged(entry.key);
+              },
+            ),
+      ],
+    );
+  }
+}

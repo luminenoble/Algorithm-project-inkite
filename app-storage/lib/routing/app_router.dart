@@ -6,6 +6,7 @@ import '../features/gallery/gallery_screen.dart';
 import '../features/me/me_screen.dart';
 import '../features/shell/main_shell.dart';
 import '../features/square/square_screen.dart';
+import '../features/writing/story_editor_screen.dart';
 import '../features/writing/writing_screen.dart';
 import '../services/auth_service.dart';
 
@@ -30,7 +31,18 @@ final appRouter = GoRouter(
     ShellRoute(
       builder: (_, _, child) => MainShell(child: child),
       routes: [
-        GoRoute(path: '/writing', builder: (_, _) => const WritingScreen()),
+        GoRoute(
+          path: '/writing',
+          builder: (_, _) => const WritingScreen(),
+          routes: [
+            GoRoute(
+              path: 'editor',
+              builder: (_, state) => StoryEditorScreen(
+                extra: state.extra as Map<String, dynamic>?,
+              ),
+            ),
+          ],
+        ),
         GoRoute(path: '/square', builder: (_, _) => const SquareScreen()),
         GoRoute(path: '/gallery', builder: (_, _) => const GalleryScreen()),
         GoRoute(path: '/me', builder: (_, _) => const MeScreen()),
