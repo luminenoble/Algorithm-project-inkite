@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/models/story.dart';
 import '../../data/repositories/story_repository.dart';
+import 'widgets/like_button.dart';
 
 /// 故事详情页 `/square/story/:id`。
 ///
@@ -212,19 +213,19 @@ class _Stats extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.favorite, size: 16, color: const Color(0xFFC2410C)),
-        const SizedBox(width: 4),
+        LikeButton(storyId: story.id),
+        const SizedBox(width: 8),
         Text(
           '${story.likeCount}',
-          style: const TextStyle(fontSize: 13, color: Color(0xFF2B2622)),
+          style: const TextStyle(fontSize: 14, color: Color(0xFF2B2622)),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: 24),
         const Icon(Icons.mode_comment_outlined,
-            size: 16, color: Color(0xFF6B6258)),
-        const SizedBox(width: 4),
+            size: 18, color: Color(0xFF6B6258)),
+        const SizedBox(width: 6),
         Text(
           '${story.commentCount}',
-          style: const TextStyle(fontSize: 13, color: Color(0xFF2B2622)),
+          style: const TextStyle(fontSize: 14, color: Color(0xFF2B2622)),
         ),
         const Spacer(),
         Text(
