@@ -199,50 +199,56 @@ class _SubmissionStats extends StatelessWidget {
   }
 }
 
-/// 自由创作入口卡片。
+/// 自由创作入口卡片：直接写 + 随机词灵感。
 class _FreeModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.go('/writing/editor', extra: {
-          'mode': 'free',
-        }),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.brush, color: Color(0xFF6B6258)),
-                  const SizedBox(width: 8),
-                  Text(
-                    '自由创作',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.brush, color: Color(0xFF6B6258)),
+                const SizedBox(width: 8),
+                Text(
+                  '自由创作',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '不限题材，随心书写你的故事',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B6258),
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '不限题材，随心书写你的故事',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: const Color(0xFF6B6258),
               ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () => context.go('/writing/editor', extra: {
-                  'mode': 'free',
-                }),
-                icon: const Icon(Icons.edit_note),
-                label: const Text('开始写作'),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => context.go('/writing/editor', extra: {
+                    'mode': 'free',
+                  }),
+                  icon: const Icon(Icons.edit_note),
+                  label: const Text('直接开始'),
+                ),
+                TextButton.icon(
+                  onPressed: () => context.go('/writing/random'),
+                  icon: const Icon(Icons.shuffle),
+                  label: const Text('随机词灵感'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

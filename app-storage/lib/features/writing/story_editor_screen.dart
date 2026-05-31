@@ -29,6 +29,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
   late StoryMode _mode;
   String? _challengeId;
   List<String>? _words;
+  List<String>? _inspirationWords;
   bool _submitting = false;
 
   @override
@@ -38,6 +39,8 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     _mode = _parseMode(extra['mode']);
     _challengeId = extra['challengeId'] as String?;
     _words = (extra['words'] as List?)?.cast<String>();
+    _inspirationWords =
+        (extra['inspirationWords'] as List?)?.cast<String>();
   }
 
   StoryMode _parseMode(Object? raw) {
@@ -132,6 +135,11 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                     _ChallengeWordsBar(words: _words!),
                     const SizedBox(height: 16),
                   ],
+                  if (_inspirationWords != null &&
+                      _inspirationWords!.isNotEmpty) ...[
+                    _InspirationWordsBar(words: _inspirationWords!),
+                    const SizedBox(height: 16),
+                  ],
                   _ModeSelector(
                     mode: _mode,
                     locked: _mode == StoryMode.official,
@@ -167,6 +175,53 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+/// 随机词灵感提示栏（不入库，仅写作时参考）。
+class _InspirationWordsBar extends StatelessWidget {
+  const _InspirationWordsBar({required this.words});
+  final List<String> words;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBF8F0),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE7E0D0), style: BorderStyle.solid),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.shuffle, size: 20, color: Color(0xFF6B6258)),
+          const SizedBox(width: 12),
+          Text(
+            '灵感词：',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFF6B6258),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: words
+                  .map((w) => Text(
+                        w,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2B2622),
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
