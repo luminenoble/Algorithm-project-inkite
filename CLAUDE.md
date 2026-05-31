@@ -6,7 +6,7 @@
 
 ## 项目概要
 
-**Inkite** —— 融合创意写作与社区分享的应用。20 天、5 人团队的课程 demo，目标是覆盖全部功能骨架，**最终以演示视频形式交付**（非现场操作）。
+**Inkite** —— 融合创意写作与社区分享的应用。原计划 20 天、5 人团队的课程 demo，**因变故已转为单人 + AI 辅助**完成；目标不变，仍覆盖全部功能骨架，**最终以演示视频形式交付**（非现场操作）。剩余工期约 15 天（记为 R1–R15），后续唯一行动指引是 `docs/single-TODO.md`（替代原 P1 视角的 `docs/tmp/section1-TODO.md`）。
 
 **交付形态**：**Windows 桌面应用为主**（同一份 Flutter 代码可编译为 Android APK 备用）。T1.3 已在 Windows 上跑通 `flutter run -d windows` 与匿名登录 + Firestore 探针。pivot 决策记录见 `docs/dependencies.md` 末尾「Windows 桌面实测环境与稳定跑法」附录。
 
@@ -16,23 +16,25 @@
 - **通道广场**：故事发布后进入社区动态，支持点赞、评论、排行榜
 - **自由创作**：随机词生成器，无限灵感入口
 - **展览厅**：完成官方挑战奖励 AI 生成折纸藏品；解锁魔法墨水与主题房间
-- **角色查询**：Wikipedia + Reddit 多源聚合（模块 G 已完成，由 P4 嵌入）
+- ~~**角色查询**：Wikipedia + Reddit 多源聚合（原模块 G）~~ —— **已于单人重排中砍除**（见 `docs/single-TODO.md` §0.3）。`charactersCache` 集合 / `CharactersCacheRepository` / `character_cache.dart` 保留在仓库但不接入 UI，`character_screen.dart` 从路由摘除，留作后续可选。
 
 **技术栈**：Flutter（客户端）+ Firebase（Auth / Firestore / Cloud Storage / Cloud Functions）+ Replicate Flux Schnell（AI 生成，备用）
 
-**团队分工**：
+**原团队分工**（已转单人，下列仅作模块归属参照；实际由单人 + AI 全部承接）：
 - P1 — 技术负责人 / 后端（Firebase 基座、数据模型、Cloud Functions、联调）
 - P2 — 写作核心（编辑器、官方挑战、自由词）
 - P3 — 社区（广场、点赞评论、排行榜）
-- P4 — 游戏化 + 角色查询嵌入（展览厅、折纸、模块 G 集成）
+- P4 — 游戏化（展览厅、折纸、解锁）；原"角色查询嵌入"随模块 G 砍除
 - P5 — 见 `docs/` 后续补充
 
-**关键里程碑**（P1 视角）：
-- D3 Firestore schema 冻结 + Hello-App 可跑（Windows 桌面端）
-- D12 账号系统 + 数据访问层 + Functions 骨架可独立运行
-- D16 AI 生成与排行榜端到端打通，功能冻结
-- D19 安全规则收紧、种子数据就绪、构建产物冻结
-- D20 演示视频录制 + 交付（Windows release 构建为主，可附 Android APK）
+**关键里程碑**（已折算为单人 R 制，详见 `docs/single-TODO.md` §1 日程）：
+- 阶段 0（已完成）Firestore schema 冻结 + Hello-App 可跑（Windows 桌面端）
+- R1–R4 写作主干（编辑器、官方挑战流、随机词、我的故事）
+- R5–R7 社区（广场列表、详情、点赞、评论、排行榜）
+- R8–R9 折纸生成 CF（预生成池 + Replicate 备用）
+- R10–R11 游戏化（画廊、折纸发放、主题房间、魔法墨水、user 派生字段）
+- R12–R14 联调 + 规则收紧 + 索引部署 + 种子数据
+- R15 部署 Functions + 录制端到端演示视频（Windows release 为主，可附 Android APK）
 
 ---
 
@@ -47,18 +49,27 @@
 ├── .firebaserc                     # 项目别名（T1.1）
 ├── .gitignore
 ├── .editorconfig                   # 跨编辑器风格统一
+├── firestore.rules                 # Firestore 安全规则（T1.4，已部署线上，T1.10a 待收紧）
+├── storage.rules                   # Cloud Storage 安全规则（T1.4，已部署线上）
+├── firestore.indexes.json          # 复合索引声明（T1.4，T1.10a 待部署）
 ├── docs/
 │   ├── git-format.md               # 提交信息与分支命名规范（强制）
 │   ├── dependencies.md             # 本地工具链安装指引（含 Windows 实测附录）
-│   ├── section1-TODO.md            # P1 全程任务清单（T1.1 – T1.11）
+│   ├── single-TODO.md              # ★ 单人重排后唯一行动指引（T1.8 起后端 + P2/P3/P4 全前端）
+│   ├── fronted-design.md           # 前端视觉/交互/折纸动效设计规格（设计事实来源，不含代码）
 │   ├── P1/
-│   │   ├── stage0/                 # 阶段 0 子任务文档（T1.1.md, T1.2.md, T1.3.md）
-│   │   └── stage1/                 # 后续阶段
+│   │   ├── stage0/                 # 阶段 0 子任务文档（T1.1–T1.4.md）
+│   │   └── stage1/                 # 阶段 1 子任务文档（T1.5–T1.7.md）
 │   ├── schema-design/
 │   │   └── design.md               # Firestore 数据模型（D3 冻结后唯一事实来源）
-│   └── tmp/                        # 立项阶段资料
+│   └── tmp/                        # 立项阶段 / 已归档资料
+│       ├── section1-TODO.md        # 原 P1 全程任务清单（已被 single-TODO.md 取代，存档）
 │       ├── 分工-初步.md
 │       └── Inkite_可行性与资金分析.md
+├── functions/                      # Cloud Functions 子工程（T1.7 已交付，未实地部署）
+│   ├── src/                        # index.ts / triggers.ts / hotScore.ts / recompute.ts
+│   ├── package.json
+│   └── tsconfig.json
 └── app-storage/                    # Flutter 工程根目录（T1.3 初始化）
 ```
 
@@ -71,15 +82,21 @@ app-storage/
 │   ├── main.dart                   # Firebase.initializeApp + MaterialApp.router
 │   ├── firebase_options.dart       # FlutterFire CLI 生成（含 android + windows 平台）
 │   ├── routing/
-│   │   └── app_router.dart         # GoRouter + authStateChanges 守卫
+│   │   └── app_router.dart         # GoRouter + authStateChanges 守卫（无 /character 路由）
+│   ├── services/
+│   │   └── auth_service.dart       # AuthService 单例（匿名 + 邮箱密码，T1.5）
+│   ├── data/                       # 数据访问层（T1.6，接口已冻结，禁改字段名）
+│   │   ├── models/                 # story / challenge / story_comment / story_like /
+│   │   │                           #   origami / user_profile / character_cache（保留未用）
+│   │   └── repositories/           # 各集合 Repository 单例（含 characters_cache_repository，保留未用）
 │   └── features/
-│       ├── auth/                   # P1
-│       ├── shell/                  # 底部 Tab 主框架
-│       ├── writing/                # P2
-│       ├── square/                 # P3
-│       ├── gallery/                # P4
-│       ├── me/                     # 我的 Tab
-│       └── character/              # 模块 G 嵌入
+│       ├── auth/                   # 登录屏（T1.5）
+│       ├── shell/                  # 底部 Tab 主框架（4 Tab）
+│       ├── writing/                # 写作（P2，落地待做）
+│       ├── square/                 # 社区广场（P3，落地待做）
+│       ├── gallery/                # 展览厅（P4，落地待做）
+│       ├── me/                     # 我的 Tab（已展示档案 + 登出）
+│       └── character/              # ⚠ 模块 G 占位屏，已从路由摘除（保留文件，不接入 UI）
 ├── windows/                        # Windows 桌面平台（主交付）
 │   ├── CMakeLists.txt
 │   ├── flutter/
@@ -96,14 +113,7 @@ app-storage/
 - `./firebase.json`（仓库根）：**Firebase CLI** 用，声明 `firestore.rules` / `storage.rules` / `firestore.indexes.json` / `functions/` 路径与 Emulator 端口
 - `app-storage/firebase.json`：**FlutterFire CLI** 用，存储已配置的平台元数据（android / windows 的 appId 等），不要手工编辑
 
-Firebase 后端配置文件（仓库根，T1.4 起补齐）：
-
-```
-firestore.rules
-storage.rules
-firestore.indexes.json
-functions/                          # Cloud Functions 源码
-```
+Firebase 后端配置文件（仓库根，T1.4 起补齐，已在上方目录树标注）：`firestore.rules`、`storage.rules`、`firestore.indexes.json` 均已存在；`functions/src/` 下已有 `index.ts`（导出汇总）、`triggers.ts`（onStoryCreated / onLike* 等触发器）、`hotScore.ts`（热度算法）、`recompute.ts`（`recomputeHotScores` Callable）。T1.8 将新增 `generateOrigami.ts`（折纸生成，预生成池 + Replicate 备用）。
 
 ---
 
@@ -138,13 +148,20 @@ functions/                          # Cloud Functions 源码
 
 - 涉及破坏性 git 操作（`reset --hard` / `push --force` / 删除分支等）须先与用户确认。
 - 范围之内：只做要求的事，不顺手做"周边重构"。
-- 修改 schema 前必先读 `docs/schema-design/design.md`；修改任务执行细节前必先读 `docs/section1-TODO.md`。
+- 修改 schema 前必先读 `docs/schema-design/design.md`；修改任务执行细节前必先读 `docs/single-TODO.md`（已取代 `docs/tmp/section1-TODO.md`）；动前端视觉 / 交互 / 动效前必先读 `docs/fronted-design.md`（设计事实来源）。
 
 ### 5. 当前阶段定位
 
-当前正在执行 **阶段 1（D4–D12）并行开发期**。阶段 0 已收尾（T1.1 / T1.2 / T1.3 / T1.4 全部交付，最后 commit `7270f43`）。阶段 1 进度：T1.5 账号系统已交付 + Windows 端验证通过（commit `26fd86b`）；T1.6 数据访问层 Repository + 模型已交付。T1.4 的 `firestore.rules` / `storage.rules` 已实际部署到 `inkite-demo` 线上。Cloud Functions 尚未存在（T1.7 / T1.8 待做）。
+**已转单人 + AI 辅助开发**，行动指引以 `docs/single-TODO.md` 为唯一事实来源（R1–R15 日程）。已交付（不要重做）：
 
-每个子任务（T1.1 / T1.2 / ...）在 `docs/P1/stageN/T1.x.md` 留一份开发记录，覆盖：已交付物、需人工执行的 Console/CLI 动作、验收清单。子任务完成后**提交前必须等待用户审核**，绝不自行 commit（用户显式授权除外）。
+- **阶段 0**（T1.1–T1.4）：Firebase 项目 `inkite-demo`、Flutter 工程 + GoRouter 4 Tab 骨架 + Windows 跑通、`firestore.rules` / `storage.rules` 已**部署线上**、`firestore.indexes.json` 已声明（待 T1.10a 部署）。最后 commit `7270f43`。
+- **T1.5** 账号系统（`AuthService` 匿名 + 邮箱密码、登录屏、首登建 `users/{uid}`）：已交付 + Windows 验证（commit `26fd86b`）。
+- **T1.6** 数据访问层：全部 Repository + 模型类已交付，**接口已冻结**（签名见 `single-TODO.md` §0.2，禁改字段名）。
+- **T1.7** Cloud Functions 子工程：5 个触发器 + `recomputeHotScores` Callable **代码已完成**（`functions/src/`），按零成本策略**未实地部署**，演示前才 deploy。
+
+待做：T1.8（折纸生成 CF）、T1.10（规则收紧 + 索引 + 种子）、T1.11（部署 + 录制），以及 P2 / P3 / P4 全部前端模块（写作 / 社区 / 游戏化）。模块 G（角色查询）已砍除（§项目概要）。
+
+每个子任务在 `docs/P1/stageN/T1.x.md` 留一份开发记录，覆盖：已交付物、需人工执行的 Console/CLI 动作、验收清单。子任务完成后**提交前必须等待用户审核**，绝不自行 commit（用户显式授权除外）。
 
 ### 6. Firebase 套餐与扣款触发点
 
@@ -184,8 +201,11 @@ functions/                          # Cloud Functions 源码
 | 主题 | 文件 |
 |------|------|
 | 提交规范 | `docs/git-format.md` |
-| P1 任务清单 | `docs/section1-TODO.md` |
+| **后续行动指引（唯一）** | `docs/single-TODO.md` |
+| **前端设计规格** | `docs/fronted-design.md` |
 | 数据模型 | `docs/schema-design/design.md` |
-| 团队分工 | `docs/tmp/分工-初步.md` |
+| 工具链 / Windows 实测附录 | `docs/dependencies.md` |
+| 原 P1 任务清单（存档） | `docs/tmp/section1-TODO.md` |
+| 团队分工（原始） | `docs/tmp/分工-初步.md` |
 | 可行性与预算 | `docs/tmp/Inkite_可行性与资金分析.md` |
 | 项目简介 | `README.md` |
