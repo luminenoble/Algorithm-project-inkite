@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/models/story.dart';
 import '../../data/repositories/story_repository.dart';
+import 'widgets/comment_section.dart';
 import 'widgets/like_button.dart';
 
 /// 故事详情页 `/square/story/:id`。
@@ -89,7 +90,7 @@ class _DetailBody extends StatelessWidget {
         const SizedBox(height: 16),
         const Divider(color: Color(0xFFC9C0B2)),
         const SizedBox(height: 8),
-        const _CommentsPlaceholder(),
+        CommentSection(storyId: story.id),
       ],
     );
   }
@@ -237,18 +238,3 @@ class _Stats extends StatelessWidget {
   }
 }
 
-/// T3.4 评论区将替换此占位。
-class _CommentsPlaceholder extends StatelessWidget {
-  const _CommentsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 16),
-      child: Text(
-        '评论区（T3.4 待接）',
-        style: TextStyle(color: Color(0xFF6B6258)),
-      ),
-    );
-  }
-}
