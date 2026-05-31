@@ -22,9 +22,8 @@ local.properties
 # 在私有仓 + 单 Firebase 项目下入仓，便于成员零摩擦克隆即跑。
 # 真正的机密是下方 service-account*.json / Admin SDK 凭证。
 GoogleService-Info.plist
-firebase-debug.log
+*-debug.log
 .firebase/
-firebase-tools-debug.log
 service-account*.json
 serviceAccountKey*.json
 
