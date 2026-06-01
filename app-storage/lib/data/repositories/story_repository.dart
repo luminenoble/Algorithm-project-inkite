@@ -60,8 +60,10 @@ class StoryRepository {
   }
 
   /// 广场动态 / 排行榜流。
-  /// - [SquareSort.hotScore]：依赖 T1.4 已声明的 `visibility ASC + hotScore DESC` 复合索引
-  /// - [SquareSort.newest]：`visibility` 单字段过滤 + `createdAt` 倒序（无需额外索引）
+  /// 两条都需要复合索引（`where + orderBy` 跨字段组合 Firestore 强制要求）：
+  /// - [SquareSort.hotScore]：`visibility ASC + hotScore DESC`
+  /// - [SquareSort.newest]：`visibility ASC + createdAt DESC`
+  /// 两条索引均在 `firestore.indexes.json` 声明并已部署。
   Stream<List<Story>> streamSquareFeed({
     SquareSort sort = SquareSort.hotScore,
     int limit = 50,
