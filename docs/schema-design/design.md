@@ -65,6 +65,8 @@
 | `endAt` | timestamp | 是 | 运营 | 生效结束时间 |
 | `isActive` | bool | 是 | 运营 / CF | 是否当前活跃，便于客户端 `where` 查询 |
 | `createdAt` | timestamp | 是 | 运营 | 创建时间 |
+| `imagePool` | string | 否 | 运营 | F1：Storage 中本挑战折纸图源前缀，如 `origami/challenges/qiu-shuang`。缺省回落 `origami/pool/{style}`。详见 `docs/AI-feature/F1-per-challenge-pool.md` |
+| `style` | string | 否 | 运营 | F1：本挑战发放折纸的 style 标签，写入 `origami.style`。缺省按 `challengeId` 哈希取 `zen / steampunk / ink` 之一 |
 
 ---
 
