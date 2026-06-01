@@ -18,3 +18,5 @@ export {
 } from "./triggers";
 
 export { recomputeHotScores } from "./recompute";
+
+export { generateOrigami } from "./generateOrigami";
