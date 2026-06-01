@@ -43,9 +43,14 @@
 | `createdAt` | timestamp | 是 | Client | 注册时间，`serverTimestamp()` |
 | `stats.storiesCount` | int | 是 | CF | 已发布故事数 |
 | `stats.likesReceived` | int | 是 | CF | 累计收到点赞 |
+| `stats.officialChallengesCount` | int | 是 | CF | F2：已发布官方挑战故事数。F2 bonus 阈值 5 |
 | `stats.engagementScore` | int | 是 | CF | 参与度得分，用于解锁判定 |
 | `unlocks.magicInk` | bool | 是 | CF | 是否解锁魔法墨水 |
 | `unlocks.rooms` | array&lt;string&gt; | 是 | CF | 已解锁的主题房间 ID 列表 |
+| `aiUsage.weekStartAt` | timestamp | 否 | CF | F2：当前 7 天窗口起点（首次 AI 调用时设）。null = 从未调用 |
+| `aiUsage.count` | int | 否 | CF | F2：本窗口已用 AI 折纸次数 |
+| `aiUsage.bonusLikes` | bool | 否 | CF | F2：likesReceived 已跨过 20，+1 quota（单向） |
+| `aiUsage.bonusChallenges` | bool | 否 | CF | F2：officialChallengesCount 已跨过 5，+1 quota（单向） |
 
 **说明**
 - `stats.*` 与 `unlocks.*` 由 Cloud Functions 在点赞/发布/挑战完成等事件触发更新。

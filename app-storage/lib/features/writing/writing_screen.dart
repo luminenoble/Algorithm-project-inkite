@@ -6,6 +6,7 @@ import '../../data/models/story.dart';
 import '../../data/repositories/challenge_repository.dart';
 import '../../data/repositories/story_repository.dart';
 import '../../services/auth_service.dart';
+import 'widgets/ai_origami_card.dart';
 
 /// 写作 Tab 落地页：官方挑战入口 + 自由创作入口。
 class WritingScreen extends StatelessWidget {
@@ -21,6 +22,8 @@ class WritingScreen extends StatelessWidget {
           _OfficialChallengeCard(),
           const SizedBox(height: 16),
           _FreeModeCard(),
+          const SizedBox(height: 16),
+          const AiOrigamiCard(),
           const SizedBox(height: 16),
           _MyStoriesCard(),
         ],

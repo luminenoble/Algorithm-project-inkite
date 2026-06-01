@@ -22,3 +22,5 @@ export {
 export { recomputeHotScores } from "./recompute";
 
 export { generateOrigami } from "./generateOrigami";
+
+export { generateAiOrigami } from "./generateAiOrigami";

@@ -43,6 +43,7 @@ export const onStoryCreated = onDocumentCreated(
       const isOfficial = data.mode === "official";
       await applyUserDelta(data.authorId as string, {
         storiesDelta: 1,
+        officialDelta: isOfficial ? 1 : 0,
         unlockRoom: isOfficial ? ZEN_GARDEN_ROOM_ID : undefined,
       });
     }
@@ -74,11 +75,16 @@ export const onStoryUpdated = onDocumentUpdated(
       const isOfficial = after.mode === "official";
       await applyUserDelta(authorId, {
         storiesDelta: 1,
+        officialDelta: isOfficial ? 1 : 0,
         unlockRoom: isOfficial ? ZEN_GARDEN_ROOM_ID : undefined,
       });
     } else {
-      // 撤回。
-      await applyUserDelta(authorId, { storiesDelta: -1 });
+      // 撤回：stories -1；如果原是 official，official 也 -1。已解锁的 room / bonus 不撤回。
+      const wasOfficial = before.mode === "official";
+      await applyUserDelta(authorId, {
+        storiesDelta: -1,
+        officialDelta: wasOfficial ? -1 : 0,
+      });
     }
   },
 );
@@ -92,7 +98,11 @@ export const onStoryDeleted = onDocumentDeleted(
     const data = event.data?.data();
     if (!data) return;
     if (data.publishedToSquare === true && data.authorId) {
-      await applyUserDelta(data.authorId as string, { storiesDelta: -1 });
+      const isOfficial = data.mode === "official";
+      await applyUserDelta(data.authorId as string, {
+        storiesDelta: -1,
+        officialDelta: isOfficial ? -1 : 0,
+      });
     }
   },
 );

@@ -1,6 +1,11 @@
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 
+import {
+  BONUS_LIKES_THRESHOLD,
+  BONUS_CHALLENGES_THRESHOLD,
+} from "./aiQuota";
+
 /**
  * 互动分阈值：≥ 此值时自动解锁 `unlocks.magicInk`。
  * 公式 `engagementScore = storiesCount*3 + likesReceived`，所以：
@@ -17,11 +22,11 @@ const MAGIC_INK_THRESHOLD = 5;
 export const ZEN_GARDEN_ROOM_ID = "zen_garden";
 
 /**
- * 维护 `users/{uid}.stats.*` + `unlocks.*` 的统一入口。
+ * 维护 `users/{uid}.stats.*` + `unlocks.*` + `aiUsage.bonusX` 的统一入口。
  *
- * - `storiesDelta` / `likesDelta` 用事务读改回写，`Math.max(0, …)` 防负
- * - `engagementScore` 同步重算
- * - 跨阈值时**只 flip 一次** `unlocks.magicInk = true`（不再 toggle）
+ * - `storiesDelta` / `likesDelta` / `officialDelta` 用事务读改回写，`Math.max(0, …)` 防负
+ * - `engagementScore` 同步重算（用 storiesCount + likesReceived）
+ * - 跨阈值时**只 flip 一次**：`unlocks.magicInk` / `aiUsage.bonusLikes` / `aiUsage.bonusChallenges`，永不撤回
  * - `unlockRoom` 用 `FieldValue.arrayUnion`，幂等
  *
  * 任何失败仅记 error 日志，不抛——上层触发器会重试，避免脏数据卡链路。
@@ -31,12 +36,25 @@ export async function applyUserDelta(
   opts: {
     storiesDelta?: number;
     likesDelta?: number;
+    officialDelta?: number;
     unlockRoom?: string;
   },
 ): Promise<void> {
   if (!uid) return;
-  const { storiesDelta = 0, likesDelta = 0, unlockRoom } = opts;
-  if (storiesDelta === 0 && likesDelta === 0 && !unlockRoom) return;
+  const {
+    storiesDelta = 0,
+    likesDelta = 0,
+    officialDelta = 0,
+    unlockRoom,
+  } = opts;
+  if (
+    storiesDelta === 0 &&
+    likesDelta === 0 &&
+    officialDelta === 0 &&
+    !unlockRoom
+  ) {
+    return;
+  }
 
   const db = getFirestore();
   const userRef = db.collection("users").doc(uid);
@@ -53,6 +71,10 @@ export async function applyUserDelta(
       const unlocks =
         (data.unlocks as { magicInk?: boolean; rooms?: string[] } | undefined) ??
         {};
+      const aiUsage =
+        (data.aiUsage as
+          | { bonusLikes?: boolean; bonusChallenges?: boolean }
+          | undefined) ?? {};
 
       const newStoriesCount = Math.max(
         0,
@@ -62,11 +84,16 @@ export async function applyUserDelta(
         0,
         (stats.likesReceived ?? 0) + likesDelta,
       );
+      const newOfficialCount = Math.max(
+        0,
+        (stats.officialChallengesCount ?? 0) + officialDelta,
+      );
       const newEngagement = newStoriesCount * 3 + newLikesReceived;
 
       const update: Record<string, unknown> = {
         "stats.storiesCount": newStoriesCount,
         "stats.likesReceived": newLikesReceived,
+        "stats.officialChallengesCount": newOfficialCount,
         "stats.engagementScore": newEngagement,
       };
 
@@ -74,6 +101,23 @@ export async function applyUserDelta(
         update["unlocks.magicInk"] = true;
         logger.info(
           `[userStats] magicInk unlocked uid=${uid} engagement=${newEngagement}`,
+        );
+      }
+
+      // F2：AI 配额 bonus 自动翻转（单向，永不回滚）
+      if (newLikesReceived >= BONUS_LIKES_THRESHOLD && !aiUsage.bonusLikes) {
+        update["aiUsage.bonusLikes"] = true;
+        logger.info(
+          `[userStats] aiUsage.bonusLikes unlocked uid=${uid} likesReceived=${newLikesReceived}`,
+        );
+      }
+      if (
+        newOfficialCount >= BONUS_CHALLENGES_THRESHOLD &&
+        !aiUsage.bonusChallenges
+      ) {
+        update["aiUsage.bonusChallenges"] = true;
+        logger.info(
+          `[userStats] aiUsage.bonusChallenges unlocked uid=${uid} officialCount=${newOfficialCount}`,
         );
       }
 

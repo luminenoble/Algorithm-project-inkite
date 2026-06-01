@@ -41,6 +41,34 @@ class OrigamiService {
       source: data['source'] as String,
     );
   }
+
+  /// F2：自由 AI 折纸生成。强制走 Replicate；周配额由 CF 维护。
+  ///
+  /// 抛 [FirebaseFunctionsException] 时 `code` 取值：
+  /// - `unauthenticated`：未登录
+  /// - `resource-exhausted`：本周配额已用完
+  /// - `internal`：Replicate 调用失败，配额已自动退回
+  Future<AiOrigamiResult> generateAiFree({String? style}) async {
+    final callable = FirebaseFunctions.instanceFor(region: _region)
+        .httpsCallable('generateAiOrigami');
+    final response = await callable.call<Map<Object?, Object?>>({
+      'style': ?style,
+    });
+    final data = Map<String, dynamic>.from(response.data);
+    final quota = Map<String, dynamic>.from(data['quota'] as Map);
+    return AiOrigamiResult(
+      origamiId: data['origamiId'] as String,
+      imageUrl: data['imageUrl'] as String,
+      style: data['style'] as String,
+      quotaUsed: (quota['used'] as num).toInt(),
+      quotaLimit: (quota['limit'] as num).toInt(),
+      windowExpiresAt: DateTime.fromMillisecondsSinceEpoch(
+        (quota['windowExpiresAtMs'] as num).toInt(),
+      ),
+      bonusLikes: quota['bonusLikes'] as bool,
+      bonusChallenges: quota['bonusChallenges'] as bool,
+    );
+  }
 }
 
 class OrigamiResult {
@@ -55,4 +83,27 @@ class OrigamiResult {
   final String imageUrl;
   final String style;
   final String source;
+}
+
+/// F2：自由 AI 折纸生成结果（含本次调用后的配额快照）。
+class AiOrigamiResult {
+  const AiOrigamiResult({
+    required this.origamiId,
+    required this.imageUrl,
+    required this.style,
+    required this.quotaUsed,
+    required this.quotaLimit,
+    required this.windowExpiresAt,
+    required this.bonusLikes,
+    required this.bonusChallenges,
+  });
+
+  final String origamiId;
+  final String imageUrl;
+  final String style;
+  final int quotaUsed;
+  final int quotaLimit;
+  final DateTime windowExpiresAt;
+  final bool bonusLikes;
+  final bool bonusChallenges;
 }
