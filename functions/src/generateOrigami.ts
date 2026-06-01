@@ -4,8 +4,13 @@ import { defineSecret } from "firebase-functions/params";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
+/**
+ * 默认风格枚举（决定 `pickStyleByHash` 落点 + 默认 prompt 字典 key）。
+ * `challenges/{id}.style` 字段允许超出此白名单的自由字符串（例如 "autumn"），
+ * 用于「per-challenge 自定义图池」场景。这种情况下 Replicate prompt 走通用模板。
+ */
 const STYLES = ["zen", "steampunk", "ink"] as const;
-type Style = (typeof STYLES)[number];
+type DefaultStyle = (typeof STYLES)[number];
 
 /**
  * Replicate API token via Firebase Functions Secrets。
@@ -114,8 +119,16 @@ export const generateOrigami = onCall<GenerateRequest>(
       };
     }
 
-    // 3. 选风格
-    const style = pickStyle(requestedStyle, challengeId);
+    // 3. F1：读 challenge 文档拿 imagePool / style 自定义。
+    //    优先级：调用方 requestedStyle > challenge.style > pickStyleByHash(challengeId)
+    //    池路径：challenge.imagePool > origami/pool/{style}
+    const challengeSnap = await db.collection("challenges").doc(challengeId).get();
+    const challengeData = challengeSnap.data();
+    const challengeStyle = challengeData?.style as string | undefined;
+    const customPool = challengeData?.imagePool as string | undefined;
+
+    const style = requestedStyle ?? challengeStyle ?? pickStyleByHash(challengeId);
+    const poolPath = customPool ?? `origami/pool/${style}`;
 
     // 4. 出图
     let imageUrl: string;
@@ -124,7 +137,7 @@ export const generateOrigami = onCall<GenerateRequest>(
     if (live === true) {
       const liveUrl = await tryReplicate(style).catch((err) => {
         logger.warn(
-          `[generateOrigami] Replicate failed for style=${style}, falling back to pool`,
+          `[generateOrigami] Replicate failed for style=${style}, falling back to pool=${poolPath}`,
           err,
         );
         return null;
@@ -133,11 +146,11 @@ export const generateOrigami = onCall<GenerateRequest>(
         imageUrl = liveUrl;
         source = "flux";
       } else {
-        imageUrl = await pickFromPool(style);
+        imageUrl = await pickFromFolder(poolPath);
         source = "pregen";
       }
     } else {
-      imageUrl = await pickFromPool(style);
+      imageUrl = await pickFromFolder(poolPath);
       source = "pregen";
     }
 
@@ -160,16 +173,10 @@ export const generateOrigami = onCall<GenerateRequest>(
 );
 
 /**
- * 风格选择：调用方传 → 直接用；否则按 challengeId 哈希稳定选风格
- * （同挑战多次调用——比如不同测试账号——选同款，便于演示对比）。
+ * 风格哈希兜底：当 challenges 既无 `style` 字段、调用方也未 `requestedStyle` 时使用。
+ * 按 challengeId 字符串哈希稳定取值，同挑战所有用户拿同一 default style。
  */
-function pickStyle(
-  requested: string | undefined,
-  challengeId: string,
-): Style {
-  if (requested && (STYLES as readonly string[]).includes(requested)) {
-    return requested as Style;
-  }
+function pickStyleByHash(challengeId: string): DefaultStyle {
   let hash = 0;
   for (let i = 0; i < challengeId.length; i++) {
     hash = (hash * 31 + challengeId.charCodeAt(i)) | 0;
@@ -178,23 +185,25 @@ function pickStyle(
 }
 
 /**
- * 从 Storage `origami/pool/{style}/` 随机挑一张图。
+ * 从 Storage 任意 prefix 随机挑一张图。
+ *
+ * F1 后用 `challenge.imagePool` 覆盖默认 `origami/pool/{style}`，所以这个函数
+ * 接受任意 prefix；非空白名单扩展名（png/jpg/webp）过滤。
  *
  * 返回 Firebase Storage 下载 URL（依赖 `storage.rules` 中
  * `match /origami/{file=**}: allow read: if true` 实现免 token 访问）。
  */
-async function pickFromPool(style: Style): Promise<string> {
+async function pickFromFolder(prefix: string): Promise<string> {
+  const normPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
   const bucket = getStorage().bucket();
-  const [files] = await bucket.getFiles({
-    prefix: `origami/pool/${style}/`,
-  });
+  const [files] = await bucket.getFiles({ prefix: normPrefix });
   const candidates = files.filter(
     (f) => !f.name.endsWith("/") && /\.(png|jpg|jpeg|webp)$/i.test(f.name),
   );
   if (candidates.length === 0) {
     throw new HttpsError(
       "failed-precondition",
-      `素材池 origami/pool/${style}/ 为空，请上传至少一张图`,
+      `素材池 ${normPrefix} 为空，请上传至少一张图`,
     );
   }
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
@@ -205,18 +214,22 @@ async function pickFromPool(style: Style): Promise<string> {
  * 调 Replicate Flux Schnell 出图，存到 `origami/live/{style}/`，返回 URL。
  * 全程 20s 超时；任何失败抛错，由上层降级。
  */
-async function tryReplicate(style: Style): Promise<string> {
+export async function tryReplicate(style: string): Promise<string> {
   const token = REPLICATE_API_TOKEN.value();
   if (!token) {
     throw new Error("REPLICATE_API_TOKEN secret not set");
   }
 
-  const prompts: Record<Style, string> = {
+  const defaultPrompts: Record<DefaultStyle, string> = {
     zen: "minimal origami crane, cream rice paper background, soft natural lighting, paper texture, top-down studio photo, no text",
     steampunk:
       "steampunk origami mechanical bird with tiny brass gears and copper wires, on aged parchment, dramatic side light, no text",
     ink: "ink wash origami crane in sumi-e style, calligraphy paper background, monochrome black ink, no text",
   };
+  // 未知 style（如 challenge 自定义 'autumn'）走通用 prompt 模板。
+  const prompt =
+    defaultPrompts[style as DefaultStyle] ??
+    `single origami paper craft, ${style} theme, paper texture, top-down studio photo, neutral background, no text`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20_000);
@@ -234,7 +247,7 @@ async function tryReplicate(style: Style): Promise<string> {
         },
         body: JSON.stringify({
           input: {
-            prompt: prompts[style],
+            prompt,
             aspect_ratio: "1:1",
             output_format: "png",
             num_outputs: 1,
