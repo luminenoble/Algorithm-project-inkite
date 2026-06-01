@@ -11,6 +11,8 @@ setGlobalOptions({
 
 export {
   onStoryCreated,
+  onStoryUpdated,
+  onStoryDeleted,
   onLikeCreated,
   onLikeDeleted,
   onCommentCreated,
