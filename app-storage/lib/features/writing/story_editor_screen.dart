@@ -5,6 +5,7 @@ import '../../data/models/story.dart';
 import '../../data/repositories/story_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
+import '../../services/origami_service.dart';
 import '../common/magic_ink.dart';
 
 /// 故事编辑器页面。
@@ -147,9 +148,32 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
         await StoryRepository.instance.create(story);
       }
 
+      // T4.2：官方挑战发布成功 → fire-and-forget 调 generateOrigami。
+      // CF 幂等保证重复发布不会刷出第二件折纸；失败仅日志，不影响发布主流程。
+      final triggerOrigami = publish &&
+          _mode == StoryMode.official &&
+          _challengeId != null;
+      if (triggerOrigami) {
+        // ignore: discarded_futures
+        OrigamiService.instance.generate(challengeId: _challengeId!).then(
+          (r) => debugPrint(
+              '[T4.2] origami unlocked: id=${r.origamiId} style=${r.style} source=${r.source}'),
+          onError: (Object e) =>
+              debugPrint('[T4.2] origami generation failed: $e'),
+        );
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(publish ? '已发布到广场' : '草稿已保存')),
+        SnackBar(
+          content: Text(
+            publish
+                ? (triggerOrigami
+                    ? '已发布到广场 · 折纸藏品已发放，去展览厅看看'
+                    : '已发布到广场')
+                : '草稿已保存',
+          ),
+        ),
       );
       context.go(_isEditMode ? '/writing/mine' : '/writing');
     } catch (e) {
