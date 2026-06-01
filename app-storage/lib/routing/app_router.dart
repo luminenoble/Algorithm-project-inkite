@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/login_screen.dart';
 import '../features/gallery/gallery_screen.dart';
+import '../features/gallery/zen_garden_screen.dart';
 import '../features/me/me_screen.dart';
 import '../features/shell/main_shell.dart';
 import '../features/square/rank_screen.dart';
@@ -78,7 +79,16 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        GoRoute(path: '/gallery', builder: (_, _) => const GalleryScreen()),
+        GoRoute(
+          path: '/gallery',
+          builder: (_, _) => const GalleryScreen(),
+          routes: [
+            GoRoute(
+              path: 'room/zen-garden',
+              builder: (_, _) => const ZenGardenScreen(),
+            ),
+          ],
+        ),
         GoRoute(path: '/me', builder: (_, _) => const MeScreen()),
       ],
     ),
