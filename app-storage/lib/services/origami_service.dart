@@ -1,39 +1,109 @@
-import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:convert';
 
-/// 折纸生成 Callable 的客户端包装。
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+
+/// Callable Cloud Functions 客户端（HTTPS 直调实现）。
 ///
-/// 对应 `functions/src/generateOrigami.ts`。
-/// CF 内部保证幂等（同 (uid, challengeId) 重复调用返回首次记录），所以
-/// 这里不做客户端去重——业务逻辑里只在「官方挑战成功发布」时调一次即可。
+/// 不走 `cloud_functions` 包——它在 Windows 桌面上没有原生 pigeon handler
+/// (CLAUDE.md §7 同款 firebase_storage 不直连的策略)。
+/// 改用 Firebase Auth ID token + http POST 直接命中 v2 onCall 端点：
+///
+/// ```
+/// POST https://<region>-<project>.cloudfunctions.net/<name>
+/// Authorization: Bearer <id-token>
+/// Content-Type: application/json
+/// Body: {"data": <args>}
+/// ```
+///
+/// 成功 → 200 + `{"result": ...}`；失败 → 非 2xx + `{"error": {"status","message"}}`。
+/// gRPC status 字符串转 callable 风格小写 dash code，对齐之前 cloud_functions 包的语义。
 class OrigamiService {
   OrigamiService._();
   static final OrigamiService instance = OrigamiService._();
 
   static const String _region = 'asia-east1';
+  static const String _projectId = 'inkite-demo';
 
-  /// 触发折纸生成。
-  /// - [challengeId] 必填，与已发布的 official story 的 `challengeId` 一致（防刷依据）
-  /// - [style] 可选，缺省按 challengeId 哈希稳定选取
-  /// - [live] = true 走 Replicate Flux Schnell 实拍（演示当天 1 次，约 ¥0.02）；
-  ///   默认 false 走预生成池
+  String _functionUrl(String name) =>
+      'https://$_region-$_projectId.cloudfunctions.net/$name';
+
+  Future<Map<String, dynamic>> _call(
+    String name,
+    Map<String, dynamic> data,
+  ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw const CallableException('unauthenticated', '请先登录');
+    }
+    final idToken = await user.getIdToken();
+    if (idToken == null || idToken.isEmpty) {
+      throw const CallableException('unauthenticated', '无法获取登录凭证');
+    }
+
+    final http.Response res;
+    try {
+      res = await http.post(
+        Uri.parse(_functionUrl(name)),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $idToken',
+        },
+        body: jsonEncode({'data': data}),
+      );
+    } catch (e) {
+      throw CallableException('unavailable', '网络错误：$e');
+    }
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      final preview =
+          res.body.length > 200 ? '${res.body.substring(0, 200)}…' : res.body;
+      throw CallableException(
+        'internal',
+        'HTTP ${res.statusCode} 响应非 JSON：$preview',
+      );
+    }
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final result = body['result'];
+      if (result is Map) return Map<String, dynamic>.from(result);
+      throw const CallableException('internal', '响应缺少 result 字段');
+    }
+
+    final err = body['error'];
+    if (err is Map) {
+      final status = (err['status'] as String?) ?? 'UNKNOWN';
+      final message =
+          (err['message'] as String?) ?? 'HTTP ${res.statusCode}';
+      throw CallableException(_statusToCode(status), message);
+    }
+    throw CallableException('internal', 'HTTP ${res.statusCode}');
+  }
+
+  /// gRPC 风格的 SCREAMING_SNAKE → callable lower-dash 风格。
+  /// 例：`FAILED_PRECONDITION` → `failed-precondition`。
+  static String _statusToCode(String status) {
+    return status.toLowerCase().replaceAll('_', '-');
+  }
+
+  /// 触发**官方挑战**折纸发放（对应 `generateOrigami` Callable）。
   ///
-  /// 抛 [FirebaseFunctionsException] 时 `code` 取值见 CF 实现：
-  /// - `unauthenticated`：未登录
-  /// - `invalid-argument`：缺 challengeId
-  /// - `failed-precondition`：防刷未通过 / 素材池空
+  /// CF 幂等：同 (uid, challengeId) 重复调用返回首次记录。
+  /// 抛 [CallableException] 时 `code` 可能为：
+  /// - `unauthenticated` / `invalid-argument` / `failed-precondition`
   Future<OrigamiResult> generate({
     required String challengeId,
     String? style,
     bool live = false,
   }) async {
-    final callable = FirebaseFunctions.instanceFor(region: _region)
-        .httpsCallable('generateOrigami');
-    final response = await callable.call<Map<Object?, Object?>>({
+    final data = await _call('generateOrigami', {
       'challengeId': challengeId,
       'style': ?style,
       if (live) 'live': true,
     });
-    final data = Map<String, dynamic>.from(response.data);
     return OrigamiResult(
       origamiId: data['origamiId'] as String,
       imageUrl: data['imageUrl'] as String,
@@ -42,19 +112,17 @@ class OrigamiService {
     );
   }
 
-  /// F2：自由 AI 折纸生成。强制走 Replicate；周配额由 CF 维护。
+  /// F2：**自由 AI** 折纸生成（对应 `generateAiOrigami` Callable）。
+  /// 周配额由 CF 维护。
   ///
-  /// 抛 [FirebaseFunctionsException] 时 `code` 取值：
+  /// 抛 [CallableException] 时 `code` 可能为：
   /// - `unauthenticated`：未登录
   /// - `resource-exhausted`：本周配额已用完
   /// - `internal`：Replicate 调用失败，配额已自动退回
   Future<AiOrigamiResult> generateAiFree({String? style}) async {
-    final callable = FirebaseFunctions.instanceFor(region: _region)
-        .httpsCallable('generateAiOrigami');
-    final response = await callable.call<Map<Object?, Object?>>({
+    final data = await _call('generateAiOrigami', {
       'style': ?style,
     });
-    final data = Map<String, dynamic>.from(response.data);
     final quota = Map<String, dynamic>.from(data['quota'] as Map);
     return AiOrigamiResult(
       origamiId: data['origamiId'] as String,
@@ -69,6 +137,21 @@ class OrigamiService {
       bonusChallenges: quota['bonusChallenges'] as bool,
     );
   }
+}
+
+/// Callable 调用失败的统一异常类型。
+///
+/// `code` 对齐 v2 onCall 的 gRPC status 小写 dash 形式：
+/// `unauthenticated` / `invalid-argument` / `failed-precondition` /
+/// `resource-exhausted` / `internal` / `unavailable` / 其他。
+class CallableException implements Exception {
+  const CallableException(this.code, this.message);
+
+  final String code;
+  final String message;
+
+  @override
+  String toString() => 'CallableException($code): $message';
 }
 
 class OrigamiResult {

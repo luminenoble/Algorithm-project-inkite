@@ -1,4 +1,3 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 
 import '../../../data/models/user_profile.dart';
@@ -35,13 +34,13 @@ class _AiOrigamiCardState extends State<AiOrigamiCard> {
           ),
         ),
       );
-    } on FirebaseFunctionsException catch (e) {
+    } on CallableException catch (e) {
       if (!mounted) return;
       final msg = switch (e.code) {
-        'resource-exhausted' => e.message ?? '本周配额已用完',
+        'resource-exhausted' => e.message,
         'internal' => 'AI 生成失败，配额已退回',
         'unauthenticated' => '请先登录',
-        _ => '生成失败：${e.message ?? e.code}',
+        _ => '生成失败：${e.message}',
       };
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
