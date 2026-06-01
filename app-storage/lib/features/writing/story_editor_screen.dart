@@ -5,6 +5,7 @@ import '../../data/models/story.dart';
 import '../../data/repositories/story_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
+import '../common/magic_ink.dart';
 
 /// 故事编辑器页面。
 ///
@@ -176,6 +177,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
         ),
         title: Text(title),
         actions: [
+          const MagicInkChip(),
           TextButton(
             onPressed: (_submitting || _loading)
                 ? null

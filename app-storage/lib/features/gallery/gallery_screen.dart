@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/origami.dart';
+import '../../data/models/user_profile.dart';
 import '../../data/repositories/origami_repository.dart';
+import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
+import '../common/magic_ink.dart';
 import 'widgets/origami_card.dart';
 import 'widgets/room_entry_card.dart';
 
@@ -23,6 +26,7 @@ class GalleryScreen extends StatelessWidget {
           ? const Center(child: Text('请先登录'))
           : CustomScrollView(
               slivers: [
+                const SliverToBoxAdapter(child: MagicInkBanner()),
                 const SliverToBoxAdapter(child: RoomEntryCard()),
                 const SliverToBoxAdapter(child: _SectionLabel(text: '折纸藏品')),
                 _OrigamiSliver(uid: uid),
@@ -66,6 +70,23 @@ class _OrigamiSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<UserProfile?>(
+      stream: UserRepository.instance.watchProfile(uid),
+      builder: (context, profileSnap) {
+        final goldEdge = profileSnap.data?.unlocks.magicInk ?? false;
+        return _OrigamiInner(uid: uid, goldEdge: goldEdge);
+      },
+    );
+  }
+}
+
+class _OrigamiInner extends StatelessWidget {
+  const _OrigamiInner({required this.uid, required this.goldEdge});
+  final String uid;
+  final bool goldEdge;
+
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder<List<Origami>>(
       stream: OrigamiRepository.instance.streamMine(uid),
       builder: (context, snap) {
@@ -106,7 +127,10 @@ class _OrigamiSliver extends StatelessWidget {
               childAspectRatio: 0.82,
             ),
             itemCount: list.length,
-            itemBuilder: (_, i) => OrigamiCard(origami: list[i]),
+            itemBuilder: (_, i) => OrigamiCard(
+              origami: list[i],
+              goldEdge: goldEdge,
+            ),
           ),
         );
       },
