@@ -3,7 +3,7 @@ import { logger } from "firebase-functions/v2";
 import { defineSecret } from "firebase-functions/params";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
-import { tryReplicate } from "./generateOrigami";
+import { tryReplicateWithWords } from "./generateOrigami";
 import { consumeAiQuota, refundAiQuota } from "./aiQuota";
 
 const REPLICATE_API_TOKEN = defineSecret("REPLICATE_API_TOKEN");
@@ -11,7 +11,12 @@ const REPLICATE_API_TOKEN = defineSecret("REPLICATE_API_TOKEN");
 /** 默认随机 style 池——与 generateOrigami 的 STYLES 对齐。 */
 const STYLES = ["zen", "steampunk", "ink"] as const;
 
+/** 单词长度上限：避免恶意超长 prompt 注入。 */
+const MAX_WORD_LENGTH = 16;
+
 interface AiGenerateRequest {
+  /** 必填：用户自定义的 3 个关键词，长度恰为 3。 */
+  words: string[];
   style?: string;
   __testUid?: string;
 }
@@ -20,6 +25,7 @@ interface AiGenerateResponse {
   origamiId: string;
   imageUrl: string;
   style: string;
+  words: string[];
   source: "flux";
   quota: {
     used: number;
@@ -58,6 +64,27 @@ export const generateAiOrigami = onCall<AiGenerateRequest>(
       );
     }
 
+    // 0. 验证 3 个关键词
+    const rawWords = request.data.words;
+    if (!Array.isArray(rawWords) || rawWords.length !== 3) {
+      throw new HttpsError(
+        "invalid-argument",
+        "需要正好 3 个关键词",
+      );
+    }
+    const words = rawWords.map((w) =>
+      typeof w === "string" ? w.trim() : "",
+    );
+    if (words.some((w) => w.length === 0)) {
+      throw new HttpsError("invalid-argument", "关键词不能为空");
+    }
+    if (words.some((w) => w.length > MAX_WORD_LENGTH)) {
+      throw new HttpsError(
+        "invalid-argument",
+        `单个关键词不能超过 ${MAX_WORD_LENGTH} 字`,
+      );
+    }
+
     // 1. 配额检查 + 占用（事务内原子化）
     const result = await consumeAiQuota(uid);
     if (!result.ok) {
@@ -77,11 +104,11 @@ export const generateAiOrigami = onCall<AiGenerateRequest>(
     // 3. Replicate 实拍（**无 fallback**——失败退回配额）
     let imageUrl: string;
     try {
-      imageUrl = await tryReplicate(style);
+      imageUrl = await tryReplicateWithWords(style, words);
     } catch (e) {
       await refundAiQuota(uid);
       logger.error(
-        `[generateAiOrigami] Replicate failed uid=${uid} style=${style}`,
+        `[generateAiOrigami] Replicate failed uid=${uid} style=${style} words=${words.join("/")}`,
         e,
       );
       throw new HttpsError(
@@ -90,25 +117,27 @@ export const generateAiOrigami = onCall<AiGenerateRequest>(
       );
     }
 
-    // 4. 写记录
+    // 4. 写记录（带 words，给后续查看 / 复述）
     const db = getFirestore();
     const ref = await db.collection("origami").add({
       ownerId: uid,
       imageUrl,
       style,
+      words,
       sourceChallengeId: null,
       source: "flux",
       createdAt: FieldValue.serverTimestamp(),
     });
 
     logger.info(
-      `[generateAiOrigami] uid=${uid} style=${style} origami=${ref.id} quota=${snapshot.used}/${snapshot.limit}`,
+      `[generateAiOrigami] uid=${uid} style=${style} words=${words.join("/")} origami=${ref.id} quota=${snapshot.used}/${snapshot.limit}`,
     );
 
     return {
       origamiId: ref.id,
       imageUrl,
       style,
+      words,
       source: "flux",
       quota: {
         used: snapshot.used,

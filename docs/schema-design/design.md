@@ -140,8 +140,9 @@ AI 折纸藏品实例。每完成一次官方挑战由 Cloud Function `generateO
 | `ownerId` | string (uid) | 是 | CF | 拥有者 uid |
 | `imageUrl` | string | 是 | CF | Cloud Storage 中的图片 URL |
 | `style` | string | 是 | CF | 风格标签（如 `zen` / `steampunk`） |
-| `sourceChallengeId` | string | 是 | CF | 触发此次发放的挑战 ID |
+| `sourceChallengeId` | string \| null | 是 | CF | 触发此次发放的挑战 ID；F2 自由 AI 路径写 null |
 | `source` | string | 是 | CF | 来源：`pregen`（素材池）或 `flux`（实时生成） |
+| `words` | array&lt;string&gt; | 否 | CF | F2 自由 AI 发放时，CF 写入用户输入的 3 个关键词；官方挑战发放为 null |
 | `createdAt` | timestamp | 是 | CF | 发放时间 |
 
 **说明**

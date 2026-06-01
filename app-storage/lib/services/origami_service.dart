@@ -113,14 +113,20 @@ class OrigamiService {
   }
 
   /// F2：**自由 AI** 折纸生成（对应 `generateAiOrigami` Callable）。
-  /// 周配额由 CF 维护。
+  /// 用户必须传入恰好 3 个非空关键词；这些词会织进 Replicate prompt，
+  /// 并随 origami 文档落库（`origami.words`）。周配额由 CF 维护。
   ///
   /// 抛 [CallableException] 时 `code` 可能为：
   /// - `unauthenticated`：未登录
+  /// - `invalid-argument`：关键词数量 / 长度不合法（客户端应预先校验）
   /// - `resource-exhausted`：本周配额已用完
   /// - `internal`：Replicate 调用失败，配额已自动退回
-  Future<AiOrigamiResult> generateAiFree({String? style}) async {
+  Future<AiOrigamiResult> generateAiFree({
+    required List<String> words,
+    String? style,
+  }) async {
     final data = await _call('generateAiOrigami', {
+      'words': words,
       'style': ?style,
     });
     final quota = Map<String, dynamic>.from(data['quota'] as Map);
@@ -128,6 +134,7 @@ class OrigamiService {
       origamiId: data['origamiId'] as String,
       imageUrl: data['imageUrl'] as String,
       style: data['style'] as String,
+      words: (data['words'] as List).map((e) => e.toString()).toList(),
       quotaUsed: (quota['used'] as num).toInt(),
       quotaLimit: (quota['limit'] as num).toInt(),
       windowExpiresAt: DateTime.fromMillisecondsSinceEpoch(
@@ -174,6 +181,7 @@ class AiOrigamiResult {
     required this.origamiId,
     required this.imageUrl,
     required this.style,
+    required this.words,
     required this.quotaUsed,
     required this.quotaLimit,
     required this.windowExpiresAt,
@@ -184,6 +192,7 @@ class AiOrigamiResult {
   final String origamiId;
   final String imageUrl;
   final String style;
+  final List<String> words;
   final int quotaUsed;
   final int quotaLimit;
   final DateTime windowExpiresAt;

@@ -210,26 +210,35 @@ async function pickFromFolder(prefix: string): Promise<string> {
   return firebaseDownloadUrl(bucket.name, pick.name);
 }
 
+/** style + 用户 3 词 → 完整 prompt。F2 自由 AI 调用方用。 */
+export function buildPromptWithWords(
+  style: string,
+  words: string[],
+): string {
+  const styleDescriptors: Record<DefaultStyle, string> = {
+    zen: "Japanese zen aesthetic with cream rice paper background and soft natural lighting",
+    steampunk:
+      "steampunk aesthetic with brass gears and copper accents on aged parchment background",
+    ink: "ink wash sumi-e style on calligraphy paper, monochrome black ink",
+  };
+  const descriptor =
+    styleDescriptors[style as DefaultStyle] ?? `${style} aesthetic`;
+  const joined = words.map((w) => w.trim()).filter((w) => w).join(", ");
+  return `single origami paper craft, ${descriptor}, expressing themes of ${joined}, paper texture, top-down studio photo, no text`;
+}
+
 /**
- * 调 Replicate Flux Schnell 出图，存到 `origami/live/{style}/`，返回 URL。
- * 全程 20s 超时；任何失败抛错，由上层降级。
+ * 内部：把一个完整 prompt 提交给 Replicate Flux Schnell 出图，
+ * 存到 `origami/live/{style}/`，返回 URL。全程 20s 超时，任何失败抛错。
  */
-export async function tryReplicate(style: string): Promise<string> {
+async function runReplicate(
+  prompt: string,
+  style: string,
+): Promise<string> {
   const token = REPLICATE_API_TOKEN.value();
   if (!token) {
     throw new Error("REPLICATE_API_TOKEN secret not set");
   }
-
-  const defaultPrompts: Record<DefaultStyle, string> = {
-    zen: "minimal origami crane, cream rice paper background, soft natural lighting, paper texture, top-down studio photo, no text",
-    steampunk:
-      "steampunk origami mechanical bird with tiny brass gears and copper wires, on aged parchment, dramatic side light, no text",
-    ink: "ink wash origami crane in sumi-e style, calligraphy paper background, monochrome black ink, no text",
-  };
-  // 未知 style（如 challenge 自定义 'autumn'）走通用 prompt 模板。
-  const prompt =
-    defaultPrompts[style as DefaultStyle] ??
-    `single origami paper craft, ${style} theme, paper texture, top-down studio photo, neutral background, no text`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20_000);
@@ -285,6 +294,31 @@ export async function tryReplicate(style: string): Promise<string> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * 官方挑战路径专用：从默认 prompt 字典选 → runReplicate。
+ * （T1.8b live=true 路径仍用此入口。）
+ */
+export async function tryReplicate(style: string): Promise<string> {
+  const defaultPrompts: Record<DefaultStyle, string> = {
+    zen: "minimal origami crane, cream rice paper background, soft natural lighting, paper texture, top-down studio photo, no text",
+    steampunk:
+      "steampunk origami mechanical bird with tiny brass gears and copper wires, on aged parchment, dramatic side light, no text",
+    ink: "ink wash origami crane in sumi-e style, calligraphy paper background, monochrome black ink, no text",
+  };
+  const prompt =
+    defaultPrompts[style as DefaultStyle] ??
+    `single origami paper craft, ${style} theme, paper texture, top-down studio photo, neutral background, no text`;
+  return runReplicate(prompt, style);
+}
+
+/** F2 自由 AI 入口：style + 3 个用户关键词 → runReplicate。 */
+export async function tryReplicateWithWords(
+  style: string,
+  words: string[],
+): Promise<string> {
+  return runReplicate(buildPromptWithWords(style, words), style);
 }
 
 /**

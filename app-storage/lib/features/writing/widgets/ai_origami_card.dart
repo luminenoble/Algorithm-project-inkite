@@ -7,10 +7,11 @@ import '../../../services/origami_service.dart';
 
 /// F2：自由 AI 折纸入口卡片。
 ///
-/// 实时展示用户本周 AI 配额状态（读 `users/{uid}.aiUsage`），
-/// 提供「召唤」按钮调 `generateAiOrigami` CF。
+/// 用户必须填入 3 个关键词才能召唤——这 3 词会织进 Replicate prompt
+/// 并随 origami 文档落库（`origami.words`），所以折纸藏品天然带「主题感」。
 ///
-/// 配额耗尽时按钮置灰；bonus 已解锁会在副文里提示。
+/// 实时展示用户本周 AI 配额状态（读 `users/{uid}.aiUsage`），bonus 锁定态
+/// chip 与剩余次数。
 class AiOrigamiCard extends StatefulWidget {
   const AiOrigamiCard({super.key});
 
@@ -19,25 +20,62 @@ class AiOrigamiCard extends StatefulWidget {
 }
 
 class _AiOrigamiCardState extends State<AiOrigamiCard> {
-  bool _summoning = false;
+  static const int _maxWordLength = 16;
 
-  Future<void> _summon(UserAiUsage usage) async {
+  final List<TextEditingController> _controllers =
+      List.generate(3, (_) => TextEditingController());
+  bool _summoning = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  List<String>? _collectWords() {
+    final words = _controllers
+        .map((c) => c.text.trim())
+        .toList(growable: false);
+    if (words.any((w) => w.isEmpty)) {
+      setState(() => _error = '请填满 3 个关键词');
+      return null;
+    }
+    if (words.any((w) => w.length > _maxWordLength)) {
+      setState(() => _error = '单个关键词不超过 $_maxWordLength 字');
+      return null;
+    }
+    setState(() => _error = null);
+    return words;
+  }
+
+  Future<void> _summon() async {
     if (_summoning) return;
+    final words = _collectWords();
+    if (words == null) return;
+
     setState(() => _summoning = true);
     try {
-      final r = await OrigamiService.instance.generateAiFree();
+      final r = await OrigamiService.instance.generateAiFree(words: words);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'AI 折纸已生成（${r.style}） · 本周剩余 ${r.quotaLimit - r.quotaUsed}/${r.quotaLimit}',
+            '${r.style} 折纸已生成（${r.words.join(" · ")}） · 本周剩余 ${r.quotaLimit - r.quotaUsed}/${r.quotaLimit}',
           ),
         ),
       );
+      // 清空输入框，方便下次召唤
+      for (final c in _controllers) {
+        c.clear();
+      }
     } on CallableException catch (e) {
       if (!mounted) return;
       final msg = switch (e.code) {
         'resource-exhausted' => e.message,
+        'invalid-argument' => e.message,
         'internal' => 'AI 生成失败，配额已退回',
         'unauthenticated' => '请先登录',
         _ => '生成失败：${e.message}',
@@ -63,10 +101,12 @@ class _AiOrigamiCardState extends State<AiOrigamiCard> {
         final profile = snap.data;
         if (profile == null) return const SizedBox.shrink();
         return _Card(
+          controllers: _controllers,
           usage: profile.aiUsage,
           stats: profile.stats,
           summoning: _summoning,
-          onSummon: () => _summon(profile.aiUsage),
+          error: _error,
+          onSummon: _summon,
         );
       },
     );
@@ -75,15 +115,19 @@ class _AiOrigamiCardState extends State<AiOrigamiCard> {
 
 class _Card extends StatelessWidget {
   const _Card({
+    required this.controllers,
     required this.usage,
     required this.stats,
     required this.summoning,
+    required this.error,
     required this.onSummon,
   });
 
+  final List<TextEditingController> controllers;
   final UserAiUsage usage;
   final UserStats stats;
   final bool summoning;
+  final String? error;
   final VoidCallback onSummon;
 
   static const int _baseQuota = 3;
@@ -98,7 +142,6 @@ class _Card extends StatelessWidget {
     }
     final expiresAt = usage.weekStartAt!.add(_weekDuration);
     if (DateTime.now().isAfter(expiresAt)) {
-      // 窗口已过期：客户端先按 0 渲染，下次调用 CF 才会真正重置 weekStartAt
       return (used: 0, limit: limit, expiresAt: null);
     }
     return (used: usage.count, limit: limit, expiresAt: expiresAt);
@@ -143,7 +186,7 @@ class _Card extends StatelessWidget {
             Text(
               exhausted
                   ? '本周配额已用完，${q.expiresAt == null ? "可立即重置" : _expiresText(q.expiresAt!)}'
-                  : '用 Replicate Flux Schnell 实时生成一件专属折纸',
+                  : '写下三个关键词，AI 会把它们织进折纸里',
               style: TextStyle(
                 fontSize: 13,
                 color: exhausted
@@ -152,6 +195,21 @@ class _Card extends StatelessWidget {
                 height: 1.5,
               ),
             ),
+            const SizedBox(height: 14),
+            _WordInputs(
+              controllers: controllers,
+              enabled: canSummon,
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                error!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF9A2D1F),
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             _BonusRow(usage: usage, stats: stats),
             const SizedBox(height: 14),
@@ -197,6 +255,50 @@ class _Card extends StatelessWidget {
     if (diff.inDays >= 1) return '${diff.inDays} 天后重置';
     if (diff.inHours >= 1) return '${diff.inHours} 小时后重置';
     return '${diff.inMinutes} 分钟后重置';
+  }
+}
+
+class _WordInputs extends StatelessWidget {
+  const _WordInputs({required this.controllers, required this.enabled});
+
+  final List<TextEditingController> controllers;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (int i = 0; i < 3; i++) ...[
+          Expanded(
+            child: TextField(
+              controller: controllers[i],
+              enabled: enabled,
+              maxLength: 16,
+              decoration: InputDecoration(
+                hintText: '词 ${i + 1}',
+                isDense: true,
+                counterText: '',
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFFC9C0B2)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFFC9C0B2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFFB8893A)),
+                ),
+              ),
+            ),
+          ),
+          if (i < 2) const SizedBox(width: 8),
+        ],
+      ],
+    );
   }
 }
 
