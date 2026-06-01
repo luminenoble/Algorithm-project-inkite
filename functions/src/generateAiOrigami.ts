@@ -8,23 +8,18 @@ import { consumeAiQuota, refundAiQuota } from "./aiQuota";
 
 const REPLICATE_API_TOKEN = defineSecret("REPLICATE_API_TOKEN");
 
-/** 默认随机 style 池——与 generateOrigami 的 STYLES 对齐。 */
-const STYLES = ["zen", "steampunk", "ink"] as const;
-
 /** 单词长度上限：避免恶意超长 prompt 注入。 */
 const MAX_WORD_LENGTH = 16;
 
 interface AiGenerateRequest {
   /** 必填：用户自定义的 3 个关键词，长度恰为 3。 */
   words: string[];
-  style?: string;
   __testUid?: string;
 }
 
 interface AiGenerateResponse {
   origamiId: string;
   imageUrl: string;
-  style: string;
   words: string[];
   source: "flux";
   quota: {
@@ -96,19 +91,15 @@ export const generateAiOrigami = onCall<AiGenerateRequest>(
     }
     const snapshot = result.snapshot;
 
-    // 2. 选 style（调用方传 → 用；否则三种默认风格随机）
-    const requestedStyle = request.data.style;
-    const style =
-      requestedStyle ?? STYLES[Math.floor(Math.random() * STYLES.length)];
-
-    // 3. Replicate 实拍（**无 fallback**——失败退回配额）
+    // 2. Replicate 实拍（**无 style 分类、无 fallback**——失败退回配额）
+    //    自由 AI 完全由用户 3 词驱动，不再贴 zen/steampunk/ink 三选一标签。
     let imageUrl: string;
     try {
-      imageUrl = await tryReplicateWithWords(style, words);
+      imageUrl = await tryReplicateWithWords(words);
     } catch (e) {
       await refundAiQuota(uid);
       logger.error(
-        `[generateAiOrigami] Replicate failed uid=${uid} style=${style} words=${words.join("/")}`,
+        `[generateAiOrigami] Replicate failed uid=${uid} words=${words.join("/")}`,
         e,
       );
       throw new HttpsError(
@@ -117,12 +108,12 @@ export const generateAiOrigami = onCall<AiGenerateRequest>(
       );
     }
 
-    // 4. 写记录（带 words，给后续查看 / 复述）
+    // 3. 写记录：style 留空串（schema 要求字段存在），words 是真正的"标签"
     const db = getFirestore();
     const ref = await db.collection("origami").add({
       ownerId: uid,
       imageUrl,
-      style,
+      style: "",
       words,
       sourceChallengeId: null,
       source: "flux",
@@ -130,13 +121,12 @@ export const generateAiOrigami = onCall<AiGenerateRequest>(
     });
 
     logger.info(
-      `[generateAiOrigami] uid=${uid} style=${style} words=${words.join("/")} origami=${ref.id} quota=${snapshot.used}/${snapshot.limit}`,
+      `[generateAiOrigami] uid=${uid} words=${words.join("/")} origami=${ref.id} quota=${snapshot.used}/${snapshot.limit}`,
     );
 
     return {
       origamiId: ref.id,
       imageUrl,
-      style,
       words,
       source: "flux",
       quota: {

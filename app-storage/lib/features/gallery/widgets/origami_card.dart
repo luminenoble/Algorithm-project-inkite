@@ -72,8 +72,8 @@ class OrigamiCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
             child: Row(
               children: [
-                _StyleChip(style: origami.style),
-                const Spacer(),
+                Expanded(child: _Tag(origami: origami)),
+                const SizedBox(width: 6),
                 if (origami.createdAt != null)
                   Text(
                     _formatDate(origami.createdAt!),
@@ -95,11 +95,15 @@ class OrigamiCard extends StatelessWidget {
   }
 }
 
-class _StyleChip extends StatelessWidget {
-  const _StyleChip({required this.style});
-  final String style;
+/// 折纸卡片底部标签：
+/// - F2 自由 AI 折纸（`words` 非空）→ 显示 3 词，例「幽谷 · 秋霜 · 画家」
+/// - 官方挑战折纸（style 非空）→ 显示 style 标签
+/// - 其它 → 空
+class _Tag extends StatelessWidget {
+  const _Tag({required this.origami});
+  final Origami origami;
 
-  static const _labels = {
+  static const _styleLabels = {
     'zen': '禅',
     'steampunk': '蒸汽',
     'ink': '水墨',
@@ -107,16 +111,45 @@ class _StyleChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = _labels[style] ?? style;
+    final words = origami.words;
+    if (words != null && words.isNotEmpty) {
+      return _Pill(
+        text: words.join(' · '),
+        bg: const Color(0xFFFAF0E1),
+        fg: const Color(0xFF6E4F1F),
+      );
+    }
+    if (origami.style.isNotEmpty) {
+      final label = _styleLabels[origami.style] ?? origami.style;
+      return _Pill(
+        text: label,
+        bg: const Color(0xFFF5F1E8),
+        fg: const Color(0xFF2B2622),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.text, required this.bg, required this.fg});
+  final String text;
+  final Color bg;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F1E8),
+        color: bg,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        label,
-        style: const TextStyle(fontSize: 11, color: Color(0xFF2B2622)),
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(fontSize: 11, color: fg),
       ),
     );
   }

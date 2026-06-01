@@ -116,6 +116,8 @@ class OrigamiService {
   /// 用户必须传入恰好 3 个非空关键词；这些词会织进 Replicate prompt，
   /// 并随 origami 文档落库（`origami.words`）。周配额由 CF 维护。
   ///
+  /// 自由 AI 折纸**不再分类到 zen/steampunk/ink** —— 3 词就是它的全部身份。
+  ///
   /// 抛 [CallableException] 时 `code` 可能为：
   /// - `unauthenticated`：未登录
   /// - `invalid-argument`：关键词数量 / 长度不合法（客户端应预先校验）
@@ -123,17 +125,14 @@ class OrigamiService {
   /// - `internal`：Replicate 调用失败，配额已自动退回
   Future<AiOrigamiResult> generateAiFree({
     required List<String> words,
-    String? style,
   }) async {
     final data = await _call('generateAiOrigami', {
       'words': words,
-      'style': ?style,
     });
     final quota = Map<String, dynamic>.from(data['quota'] as Map);
     return AiOrigamiResult(
       origamiId: data['origamiId'] as String,
       imageUrl: data['imageUrl'] as String,
-      style: data['style'] as String,
       words: (data['words'] as List).map((e) => e.toString()).toList(),
       quotaUsed: (quota['used'] as num).toInt(),
       quotaLimit: (quota['limit'] as num).toInt(),
@@ -176,11 +175,11 @@ class OrigamiResult {
 }
 
 /// F2：自由 AI 折纸生成结果（含本次调用后的配额快照）。
+/// 不带 `style`——自由 AI 折纸已不再做 zen/steampunk/ink 分类。
 class AiOrigamiResult {
   const AiOrigamiResult({
     required this.origamiId,
     required this.imageUrl,
-    required this.style,
     required this.words,
     required this.quotaUsed,
     required this.quotaLimit,
@@ -191,7 +190,6 @@ class AiOrigamiResult {
 
   final String origamiId;
   final String imageUrl;
-  final String style;
   final List<String> words;
   final int quotaUsed;
   final int quotaLimit;

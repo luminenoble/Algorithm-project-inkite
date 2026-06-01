@@ -63,7 +63,7 @@ class _AiOrigamiCardState extends State<AiOrigamiCard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${r.style} 折纸已生成（${r.words.join(" · ")}） · 本周剩余 ${r.quotaLimit - r.quotaUsed}/${r.quotaLimit}',
+            '折纸已生成（${r.words.join(" · ")}） · 本周剩余 ${r.quotaLimit - r.quotaUsed}/${r.quotaLimit}',
           ),
         ),
       );

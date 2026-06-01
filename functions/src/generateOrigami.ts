@@ -228,12 +228,14 @@ export function buildPromptWithWords(
 }
 
 /**
- * 内部：把一个完整 prompt 提交给 Replicate Flux Schnell 出图，
- * 存到 `origami/live/{style}/`，返回 URL。全程 20s 超时，任何失败抛错。
+ * 把一个完整 prompt 提交给 Replicate Flux Schnell 出图，存到
+ * `origami/live/{subfolder}/`，返回 URL。全程 20s 超时，任何失败抛错。
+ *
+ * `subfolder` 仅用于 Storage 路径分桶（演示后审查方便），不影响 prompt。
  */
-async function runReplicate(
+export async function runReplicate(
   prompt: string,
-  style: string,
+  subfolder: string,
 ): Promise<string> {
   const token = REPLICATE_API_TOKEN.value();
   if (!token) {
@@ -285,7 +287,7 @@ async function runReplicate(
     const buf = Buffer.from(await imgRes.arrayBuffer());
 
     const bucket = getStorage().bucket();
-    const objectName = `origami/live/${style}/${Date.now()}-${Math.random()
+    const objectName = `origami/live/${subfolder}/${Date.now()}-${Math.random()
       .toString(36)
       .slice(2, 10)}.png`;
     await bucket.file(objectName).save(buf, { contentType: "image/png" });
@@ -313,12 +315,16 @@ export async function tryReplicate(style: string): Promise<string> {
   return runReplicate(prompt, style);
 }
 
-/** F2 自由 AI 入口：style + 3 个用户关键词 → runReplicate。 */
+/**
+ * F2 自由 AI 入口：完全由 3 个用户关键词驱动，**不分类、不带 style 描述**。
+ * Storage 路径用固定 `free` 桶（演示后清点 / 删除方便）。
+ */
 export async function tryReplicateWithWords(
-  style: string,
   words: string[],
 ): Promise<string> {
-  return runReplicate(buildPromptWithWords(style, words), style);
+  const joined = words.map((w) => w.trim()).filter((w) => w).join(", ");
+  const prompt = `single origami paper craft expressing themes of ${joined}, on natural paper background, soft natural lighting, paper texture, top-down studio photo, no text`;
+  return runReplicate(prompt, "free");
 }
 
 /**
