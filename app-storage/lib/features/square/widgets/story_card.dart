@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/story.dart';
+import '../../../theme/design_tokens.dart';
+import '../../../theme/skin_controller.dart';
+import '../../../widgets/origami_icon.dart';
+import '../../../widgets/origami_icons.dart';
 
 /// 广场动态卡片：标题 + 作者 + 摘要 + 点赞 / 评论计数。
 ///
@@ -20,10 +24,10 @@ class StoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Card(
-      color: const Color(0xFFFBF8F0),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(DesignTokens.radiusCard),
         onTap: () => context.go('/square/story/${story.id}'),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -45,10 +49,10 @@ class StoryCard extends StatelessWidget {
                             story.title.isEmpty ? '（无标题）' : story.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF2B2622),
+                              color: skin.inkPrimary,
                             ),
                           ),
                         ),
@@ -59,41 +63,39 @@ class StoryCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       story.authorName.isEmpty ? '匿名' : story.authorName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF6B6258),
-                      ),
+                      style: TextStyle(fontSize: 12, color: skin.inkSecondary),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       story.body,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         height: 1.6,
-                        color: Color(0xFF2B2622),
+                        color: skin.inkPrimary,
                       ),
                     ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
                         _CountChip(
-                          icon: Icons.favorite_outline,
+                          glyph: OrigamiGlyph.heart,
                           count: story.likeCount,
                         ),
                         const SizedBox(width: 16),
                         _CountChip(
-                          icon: Icons.mode_comment_outlined,
+                          glyph: OrigamiGlyph.seal,
                           count: story.commentCount,
+                          icon: Icons.mode_comment_outlined,
                         ),
                         const Spacer(),
                         if (story.createdAt != null)
                           Text(
                             _formatDate(story.createdAt!),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF6B6258),
+                              color: skin.inkSecondary,
                             ),
                           ),
                       ],
@@ -119,20 +121,26 @@ class StoryCard extends StatelessWidget {
 }
 
 class _CountChip extends StatelessWidget {
-  const _CountChip({required this.icon, required this.count});
-  final IconData icon;
+  const _CountChip({required this.glyph, required this.count, this.icon});
+  final OrigamiGlyph glyph;
   final int count;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: const Color(0xFF6B6258)),
+        // 点赞用折纸心；评论暂用 Material 图标兜底。
+        if (icon != null)
+          Icon(icon, size: 14, color: skin.inkSecondary)
+        else
+          OrigamiIcon(glyph, size: 14, color: skin.inkSecondary),
         const SizedBox(width: 4),
         Text(
           '$count',
-          style: const TextStyle(fontSize: 12, color: Color(0xFF6B6258)),
+          style: TextStyle(fontSize: 12, color: skin.inkSecondary),
         ),
       ],
     );
@@ -144,17 +152,18 @@ class _OfficialBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFC2410C),
+        color: skin.accentVermilion,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Text(
+      child: Text(
         '官方',
         style: TextStyle(
           fontSize: 11,
-          color: Colors.white,
+          color: skin.paperHighlight,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -169,12 +178,13 @@ class _RankBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final isTop3 = rank <= 3;
     final color = switch (rank) {
-      1 => const Color(0xFFC2410C),
-      2 => const Color(0xFFB8893A),
-      3 => const Color(0xFF9A2D1F),
-      _ => const Color(0xFFC9C0B2),
+      1 => skin.accentVermilion,
+      2 => skin.goldLeaf,
+      3 => skin.accentSeal,
+      _ => skin.inkFaint,
     };
     return Container(
       width: 32,
@@ -190,7 +200,7 @@ class _RankBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: isTop3 ? Colors.white : const Color(0xFF6B6258),
+          color: isTop3 ? skin.paperHighlight : skin.inkSecondary,
         ),
       ),
     );

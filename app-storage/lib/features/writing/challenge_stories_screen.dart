@@ -5,6 +5,10 @@ import '../../data/models/challenge.dart';
 import '../../data/models/story.dart';
 import '../../data/repositories/challenge_repository.dart';
 import '../../data/repositories/story_repository.dart';
+import '../../theme/skin_controller.dart';
+import '../../widgets/brush_loading.dart';
+import '../../widgets/origami_icon.dart';
+import '../../widgets/origami_icons.dart';
 
 /// 本期挑战故事列表：用 `streamByChallenge` 聚合所有 `mode=official` 且
 /// `challengeId=入参` 的 story（验证 T2.2 验收条款）。
@@ -37,16 +41,24 @@ class ChallengeStoriesScreen extends StatelessWidget {
                       .streamByChallenge(challengeId, limit: 100),
                   builder: (context, snap) {
                     if (snap.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(child: BrushLoading());
                     }
                     final stories = snap.data ?? const [];
                     if (stories.isEmpty) {
-                      return const Center(
+                      return Center(
                         child: Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Text(
-                            '本期还没有故事，做第一个交卷的人',
-                            style: TextStyle(color: Color(0xFF6B6258)),
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              OrigamiIcon(OrigamiGlyph.emptyPaper,
+                                  size: 48, color: context.skin.inkFaint),
+                              const SizedBox(height: 10),
+                              Text(
+                                '本期还没有故事，做第一个交卷的人',
+                                style: TextStyle(color: context.skin.inkSecondary),
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -77,20 +89,19 @@ class _ChallengeHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      color: const Color(0xFFF5F1E8),
+      color: context.skin.paperBase,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            challenge.title,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text(challenge.title, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             children: challenge.words
                 .map((w) => Chip(
-                      label: Text(w, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      label: Text(w,
+                          style:
+                              const TextStyle(fontWeight: FontWeight.w600)),
                       visualDensity: VisualDensity.compact,
                     ))
                 .toList(),
@@ -107,6 +118,7 @@ class _StoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Card(
       child: ListTile(
         title: Text(
@@ -123,23 +135,22 @@ class _StoryRow extends StatelessWidget {
               story.body,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Color(0xFF6B6258)),
+              style: TextStyle(color: skin.inkSecondary),
             ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Text(
                   story.authorName,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B6258)),
+                  style: TextStyle(fontSize: 12, color: skin.inkSecondary),
                 ),
                 const Spacer(),
-                const Icon(Icons.favorite, size: 14, color: Color(0xFFC2410C)),
+                OrigamiIcon(OrigamiGlyph.heart,
+                    size: 14, fill: true, color: skin.accentVermilion),
                 const SizedBox(width: 4),
-                Text('${story.likeCount}',
-                    style: const TextStyle(fontSize: 12)),
+                Text('${story.likeCount}', style: const TextStyle(fontSize: 12)),
                 const SizedBox(width: 12),
-                const Icon(Icons.comment_outlined,
-                    size: 14, color: Color(0xFF6B6258)),
+                Icon(Icons.comment_outlined, size: 14, color: skin.inkSecondary),
                 const SizedBox(width: 4),
                 Text('${story.commentCount}',
                     style: const TextStyle(fontSize: 12)),

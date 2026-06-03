@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/origami.dart';
+import '../../../theme/skin_controller.dart';
+import '../../../widgets/brush_loading.dart';
 
 /// 折纸藏品卡片：图片 + 风格标签 + 创建时间。
 ///
@@ -19,21 +21,20 @@ class OrigamiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFBF8F0),
+        color: skin.surfaceCard,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: goldEdge
-              ? const Color(0xFFB8893A)
-              : const Color(0xFFE7E0D0),
+          color: goldEdge ? skin.goldLeaf : skin.paperShade,
           width: goldEdge ? 1.5 : 1,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x14000000),
+            color: skin.paperShade.withValues(alpha: 0.7),
             blurRadius: 6,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -49,22 +50,16 @@ class OrigamiCard extends StatelessWidget {
               loadingBuilder: (_, child, progress) {
                 if (progress == null) return child;
                 return Container(
-                  color: const Color(0xFFE7E0D0),
+                  color: skin.paperShade,
                   alignment: Alignment.center,
-                  child: const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                  child: const BrushLoading(size: 28, showSlowHint: false),
                 );
               },
               errorBuilder: (_, _, _) => Container(
-                color: const Color(0xFFE7E0D0),
+                color: skin.paperShade,
                 alignment: Alignment.center,
-                child: const Icon(
-                  Icons.broken_image_outlined,
-                  color: Color(0xFF6B6258),
-                ),
+                child: Icon(Icons.broken_image_outlined,
+                    color: skin.inkSecondary),
               ),
             ),
           ),
@@ -77,10 +72,7 @@ class OrigamiCard extends StatelessWidget {
                 if (origami.createdAt != null)
                   Text(
                     _formatDate(origami.createdAt!),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF6B6258),
-                    ),
+                    style: TextStyle(fontSize: 11, color: skin.inkSecondary),
                   ),
               ],
             ),
@@ -111,21 +103,19 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final words = origami.words;
     if (words != null && words.isNotEmpty) {
+      // F2 自由 AI 折纸：金箔色调标签，呼应 AI 召唤卡的识别色。
       return _Pill(
         text: words.join(' · '),
-        bg: const Color(0xFFFAF0E1),
-        fg: const Color(0xFF6E4F1F),
+        bg: skin.goldLeaf.withValues(alpha: 0.14),
+        fg: skin.inkPrimary,
       );
     }
     if (origami.style.isNotEmpty) {
       final label = _styleLabels[origami.style] ?? origami.style;
-      return _Pill(
-        text: label,
-        bg: const Color(0xFFF5F1E8),
-        fg: const Color(0xFF2B2622),
-      );
+      return _Pill(text: label, bg: skin.paperBase, fg: skin.inkPrimary);
     }
     return const SizedBox.shrink();
   }

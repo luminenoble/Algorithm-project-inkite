@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/user_profile.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../services/auth_service.dart';
+import '../../../theme/skin_controller.dart';
+import '../../../widgets/origami_icon.dart';
+import '../../../widgets/origami_icons.dart';
 import '../zen_garden_screen.dart';
 
 /// 主题房间入口卡片：禅意花园。
@@ -20,9 +23,8 @@ class RoomEntryCard extends StatelessWidget {
     return StreamBuilder<UserProfile?>(
       stream: UserRepository.instance.watchProfile(uid),
       builder: (context, snap) {
-        final unlocked = snap.data?.unlocks.rooms
-                .contains(ZenGardenScreen.roomId) ??
-            false;
+        final unlocked =
+            snap.data?.unlocks.rooms.contains(ZenGardenScreen.roomId) ?? false;
         return _Card(unlocked: unlocked);
       },
     );
@@ -35,13 +37,12 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = unlocked
-        ? const Color(0xFFB8893A)
-        : const Color(0xFFC9C0B2);
+    final skin = context.skin;
+    final color = unlocked ? skin.goldLeaf : skin.inkFaint;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Material(
-        color: const Color(0xFFFBF8F0),
+        color: skin.surfaceCard,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
@@ -50,10 +51,7 @@ class _Card extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: color,
-                width: unlocked ? 1.5 : 1,
-              ),
+              border: Border.all(color: color, width: unlocked ? 1.5 : 1),
             ),
             child: Row(
               children: [
@@ -63,17 +61,14 @@ class _Card extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: unlocked
-                        ? const Color(0xFFB8893A).withValues(alpha: 0.12)
-                        : const Color(0xFFE7E0D0),
+                        ? skin.goldLeaf.withValues(alpha: 0.12)
+                        : skin.paperShade,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    unlocked ? Icons.spa_outlined : Icons.lock_outline,
-                    size: 28,
-                    color: unlocked
-                        ? const Color(0xFFB8893A)
-                        : const Color(0xFF6B6258),
-                  ),
+                  child: unlocked
+                      ? Icon(Icons.spa_outlined, size: 28, color: skin.goldLeaf)
+                      : OrigamiIcon(OrigamiGlyph.lock,
+                          size: 26, color: skin.inkSecondary),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -82,30 +77,28 @@ class _Card extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Text(
+                          Text(
                             '禅意花园',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF2B2622),
+                              color: skin.inkPrimary,
                             ),
                           ),
                           const SizedBox(width: 8),
                           if (unlocked)
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFB8893A),
+                                color: skin.goldLeaf,
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
+                              child: Text(
                                 '已解锁',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: Colors.white,
+                                  color: skin.paperHighlight,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -115,20 +108,13 @@ class _Card extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         unlocked ? '主题房间 · 沙纹石景' : '完成首个官方挑战即可解锁',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF6B6258),
-                        ),
+                        style: TextStyle(fontSize: 12, color: skin.inkSecondary),
                       ),
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.chevron_right,
-                  color: unlocked
-                      ? const Color(0xFF2B2622)
-                      : const Color(0xFFC9C0B2),
-                ),
+                Icon(Icons.chevron_right,
+                    color: unlocked ? skin.inkPrimary : skin.inkFaint),
               ],
             ),
           ),

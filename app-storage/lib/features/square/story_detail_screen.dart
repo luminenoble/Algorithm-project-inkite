@@ -3,6 +3,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/models/story.dart';
 import '../../data/repositories/story_repository.dart';
+import '../../theme/skin_controller.dart';
+import '../../widgets/brush_loading.dart';
+import '../../widgets/origami_icon.dart';
+import '../../widgets/origami_icons.dart';
 import 'widgets/comment_section.dart';
 import 'widgets/like_button.dart';
 
@@ -17,8 +21,8 @@ class StoryDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F1E8),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -30,7 +34,7 @@ class StoryDetailScreen extends StatelessWidget {
         stream: StoryRepository.instance.watchById(storyId),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: BrushLoading());
           }
           if (snap.hasError) {
             return Center(
@@ -38,19 +42,19 @@ class StoryDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(24),
                 child: Text(
                   '加载失败：${snap.error}',
-                  style: const TextStyle(color: Color(0xFF9A2D1F)),
+                  style: TextStyle(color: skin.accentSeal),
                 ),
               ),
             );
           }
           final story = snap.data;
           if (story == null) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(32),
+                padding: const EdgeInsets.all(32),
                 child: Text(
                   '故事不存在或已被删除',
-                  style: TextStyle(color: Color(0xFF6B6258)),
+                  style: TextStyle(color: skin.inkSecondary),
                 ),
               ),
             );
@@ -68,6 +72,7 @@ class _DetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       children: [
@@ -79,16 +84,12 @@ class _DetailBody extends StatelessWidget {
         ],
         SelectableText(
           story.body,
-          style: const TextStyle(
-            fontSize: 16,
-            height: 1.75,
-            color: Color(0xFF2B2622),
-          ),
+          style: TextStyle(fontSize: 16, height: 1.75, color: skin.inkPrimary),
         ),
         const SizedBox(height: 24),
         _Stats(story: story),
         const SizedBox(height: 16),
-        const Divider(color: Color(0xFFC9C0B2)),
+        const Divider(),
         const SizedBox(height: 8),
         CommentSection(storyId: story.id),
       ],
@@ -102,6 +103,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -112,13 +114,13 @@ class _Header extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC2410C),
+                  color: skin.accentVermilion,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
+                child: Text(
                   '官方挑战',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: skin.paperHighlight,
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
@@ -127,10 +129,10 @@ class _Header extends StatelessWidget {
             Expanded(
               child: Text(
                 story.title.isEmpty ? '（无标题）' : story.title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF2B2622),
+                  color: skin.inkPrimary,
                   height: 1.3,
                 ),
               ),
@@ -140,18 +142,17 @@ class _Header extends StatelessWidget {
         const SizedBox(height: 8),
         Row(
           children: [
-            const Icon(Icons.person_outline,
-                size: 14, color: Color(0xFF6B6258)),
+            Icon(Icons.person_outline, size: 14, color: skin.inkSecondary),
             const SizedBox(width: 4),
             Text(
               story.authorName.isEmpty ? '匿名' : story.authorName,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF6B6258)),
+              style: TextStyle(fontSize: 13, color: skin.inkSecondary),
             ),
             const SizedBox(width: 12),
             if (story.createdAt != null)
               Text(
                 _formatDate(story.createdAt!),
-                style: const TextStyle(fontSize: 12, color: Color(0xFF6B6258)),
+                style: TextStyle(fontSize: 12, color: skin.inkSecondary),
               ),
           ],
         ),
@@ -171,22 +172,19 @@ class _ChallengeWords extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBF8F0),
-        border: Border.all(color: const Color(0xFFC9C0B2)),
+        color: skin.surfaceCard,
+        border: Border.all(color: skin.inkFaint),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome,
-              size: 16, color: Color(0xFFC2410C)),
+          Icon(Icons.auto_awesome, size: 16, color: skin.accentVermilion),
           const SizedBox(width: 8),
-          const Text(
-            '挑战词',
-            style: TextStyle(fontSize: 12, color: Color(0xFF6B6258)),
-          ),
+          Text('挑战词', style: TextStyle(fontSize: 12, color: skin.inkSecondary)),
           const SizedBox(width: 12),
           Expanded(
             child: Wrap(
@@ -194,7 +192,6 @@ class _ChallengeWords extends StatelessWidget {
               children: words
                   .map((w) => Chip(
                         label: Text(w),
-                        backgroundColor: const Color(0xFFF5F1E8),
                         visualDensity: VisualDensity.compact,
                       ))
                   .toList(),
@@ -212,29 +209,28 @@ class _Stats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Row(
       children: [
         LikeButton(storyId: story.id),
         const SizedBox(width: 8),
         Text(
           '${story.likeCount}',
-          style: const TextStyle(fontSize: 14, color: Color(0xFF2B2622)),
+          style: TextStyle(fontSize: 14, color: skin.inkPrimary),
         ),
         const SizedBox(width: 24),
-        const Icon(Icons.mode_comment_outlined,
-            size: 18, color: Color(0xFF6B6258)),
+        OrigamiIcon(OrigamiGlyph.seal, size: 16, color: skin.inkSecondary),
         const SizedBox(width: 6),
         Text(
           '${story.commentCount}',
-          style: const TextStyle(fontSize: 14, color: Color(0xFF2B2622)),
+          style: TextStyle(fontSize: 14, color: skin.inkPrimary),
         ),
         const Spacer(),
         Text(
           '热度 ${story.hotScore.toStringAsFixed(0)}',
-          style: const TextStyle(fontSize: 12, color: Color(0xFF6B6258)),
+          style: TextStyle(fontSize: 12, color: skin.inkSecondary),
         ),
       ],
     );
   }
 }
-

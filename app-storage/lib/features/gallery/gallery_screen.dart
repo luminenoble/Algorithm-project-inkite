@@ -5,6 +5,10 @@ import '../../data/models/user_profile.dart';
 import '../../data/repositories/origami_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
+import '../../theme/skin_controller.dart';
+import '../../widgets/brush_loading.dart';
+import '../../widgets/origami_icon.dart';
+import '../../widgets/origami_icons.dart';
 import '../common/magic_ink.dart';
 import 'widgets/origami_card.dart';
 import 'widgets/room_entry_card.dart';
@@ -20,7 +24,6 @@ class GalleryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final uid = AuthService.instance.currentUid;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F1E8),
       appBar: AppBar(title: const Text('展览厅')),
       body: uid == null
           ? const Center(child: Text('请先登录'))
@@ -42,22 +45,21 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
       child: Row(
         children: [
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF2B2622),
+              color: skin.inkPrimary,
             ),
           ),
           const SizedBox(width: 8),
-          const Expanded(
-            child: Divider(color: Color(0xFFC9C0B2)),
-          ),
+          const Expanded(child: Divider()),
         ],
       ),
     );
@@ -93,7 +95,7 @@ class _OrigamiInner extends StatelessWidget {
         if (snap.connectionState == ConnectionState.waiting) {
           return const SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: BrushLoading()),
           );
         }
         if (snap.hasError) {
@@ -104,7 +106,7 @@ class _OrigamiInner extends StatelessWidget {
                 padding: const EdgeInsets.all(24),
                 child: Text(
                   '加载失败：${snap.error}',
-                  style: const TextStyle(color: Color(0xFF9A2D1F)),
+                  style: TextStyle(color: context.skin.accentSeal),
                 ),
               ),
             ),
@@ -143,39 +145,27 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFBF8F0),
-                border: Border.all(color: const Color(0xFFC9C0B2)),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.auto_awesome_outlined,
-                size: 32,
-                color: Color(0xFF6B6258),
-              ),
-            ),
+            OrigamiIcon(OrigamiGlyph.emptyPaper, size: 64, color: skin.inkFaint),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               '还没有折纸藏品',
               style: TextStyle(
                 fontSize: 16,
-                color: Color(0xFF2B2622),
+                color: skin.inkPrimary,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               '完成官方挑战，解锁第一件折纸',
-              style: TextStyle(fontSize: 13, color: Color(0xFF6B6258)),
+              style: TextStyle(fontSize: 13, color: skin.inkSecondary),
             ),
           ],
         ),

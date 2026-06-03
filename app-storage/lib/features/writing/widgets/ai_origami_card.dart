@@ -4,6 +4,8 @@ import '../../../data/models/user_profile.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/origami_service.dart';
+import '../../../theme/skin_controller.dart';
+import '../../../widgets/brush_loading.dart';
 
 /// F2：自由 AI 折纸入口卡片。
 ///
@@ -36,9 +38,8 @@ class _AiOrigamiCardState extends State<AiOrigamiCard> {
   }
 
   List<String>? _collectWords() {
-    final words = _controllers
-        .map((c) => c.text.trim())
-        .toList(growable: false);
+    final words =
+        _controllers.map((c) => c.text.trim()).toList(growable: false);
     if (words.any((w) => w.isEmpty)) {
       setState(() => _error = '请填满 3 个关键词');
       return null;
@@ -67,7 +68,6 @@ class _AiOrigamiCardState extends State<AiOrigamiCard> {
           ),
         ),
       );
-      // 清空输入框，方便下次召唤
       for (final c in _controllers) {
         c.clear();
       }
@@ -149,17 +149,18 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final q = _resolveQuota();
     final remaining = q.limit - q.used;
     final exhausted = remaining <= 0;
     final canSummon = !summoning && !exhausted;
 
     return Card(
-      color: const Color(0xFFFBF8F0),
       clipBehavior: Clip.antiAlias,
+      // 金箔描边是 AI 折纸卡的识别色（§9 魔法墨水彩蛋同源）。
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFB8893A), width: 1.2),
+        side: BorderSide(color: skin.goldLeaf, width: 1.2),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -168,16 +169,10 @@ class _Card extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.auto_fix_high,
-                    color: Color(0xFFB8893A), size: 22),
+                Icon(Icons.auto_fix_high, color: skin.goldLeaf, size: 22),
                 const SizedBox(width: 8),
-                Text(
-                  'AI 折纸召唤',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF2B2622),
-                      ),
-                ),
+                Text('AI 折纸召唤',
+                    style: Theme.of(context).textTheme.titleMedium),
                 const Spacer(),
                 _QuotaPill(used: q.used, limit: q.limit),
               ],
@@ -189,26 +184,16 @@ class _Card extends StatelessWidget {
                   : '写下三个关键词，AI 会把它们织进折纸里',
               style: TextStyle(
                 fontSize: 13,
-                color: exhausted
-                    ? const Color(0xFF9A2D1F)
-                    : const Color(0xFF6B6258),
+                color: exhausted ? skin.accentSeal : skin.inkSecondary,
                 height: 1.5,
               ),
             ),
             const SizedBox(height: 14),
-            _WordInputs(
-              controllers: controllers,
-              enabled: canSummon,
-            ),
+            _WordInputs(controllers: controllers, enabled: canSummon),
             if (error != null) ...[
               const SizedBox(height: 6),
-              Text(
-                error!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF9A2D1F),
-                ),
-              ),
+              Text(error!,
+                  style: TextStyle(fontSize: 12, color: skin.accentSeal)),
             ],
             const SizedBox(height: 14),
             _BonusRow(usage: usage, stats: stats),
@@ -218,30 +203,23 @@ class _Card extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: canSummon ? onSummon : null,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFB8893A),
-                    disabledBackgroundColor: const Color(0xFFC9C0B2),
+                    backgroundColor: skin.goldLeaf,
+                    disabledBackgroundColor: skin.inkFaint,
                   ),
                   icon: summoning
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
+                      ? BrushLoading(
+                          size: 14,
+                          showSlowHint: false,
+                          color: skin.paperHighlight,
                         )
                       : const Icon(Icons.auto_awesome, size: 18),
                   label: Text(summoning ? '召唤中…' : '召唤折纸'),
                 ),
                 const SizedBox(width: 12),
                 if (!exhausted)
-                  Text(
-                    '剩余 $remaining 次',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF6B6258),
-                    ),
-                  ),
+                  Text('剩余 $remaining 次',
+                      style:
+                          TextStyle(fontSize: 12, color: skin.inkSecondary)),
               ],
             ),
           ],
@@ -278,20 +256,8 @@ class _WordInputs extends StatelessWidget {
                 hintText: '词 ${i + 1}',
                 isDense: true,
                 counterText: '',
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFC9C0B2)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFC9C0B2)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFB8893A)),
-                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               ),
             ),
           ),
@@ -309,18 +275,19 @@ class _QuotaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFB8893A).withValues(alpha: 0.15),
+        color: skin.goldLeaf.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         '$used / $limit',
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: Color(0xFFB8893A),
+          color: skin.goldLeaf,
         ),
       ),
     );
@@ -368,15 +335,14 @@ class _BonusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = unlocked
-        ? const Color(0xFFB8893A)
-        : const Color(0xFFC9C0B2);
+    final skin = context.skin;
+    final color = unlocked ? skin.goldLeaf : skin.inkFaint;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: unlocked
-            ? const Color(0xFFB8893A).withValues(alpha: 0.10)
-            : const Color(0xFFF5F1E8),
+            ? skin.goldLeaf.withValues(alpha: 0.10)
+            : skin.paperBase,
         border: Border.all(color: color),
         borderRadius: BorderRadius.circular(6),
       ),
@@ -393,9 +359,7 @@ class _BonusChip extends StatelessWidget {
             unlocked ? unlockedText : lockedText,
             style: TextStyle(
               fontSize: 11,
-              color: unlocked
-                  ? const Color(0xFF2B2622)
-                  : const Color(0xFF6B6258),
+              color: unlocked ? skin.inkPrimary : skin.inkSecondary,
               fontWeight: unlocked ? FontWeight.w500 : FontWeight.normal,
             ),
           ),

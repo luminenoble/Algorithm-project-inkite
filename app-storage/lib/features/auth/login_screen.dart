@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../widgets/brush_loading.dart';
 
 /// T1.5 登录/注册页。
 ///
@@ -195,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                   if (_busy) ...[
                     const SizedBox(height: 12),
-                    const Center(child: CircularProgressIndicator()),
+                    const Center(child: BrushLoading()),
                   ],
                 ],
               ),

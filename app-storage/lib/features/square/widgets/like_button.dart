@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../data/repositories/like_repository.dart';
 import '../../../services/auth_service.dart';
+import '../../../theme/motion.dart';
+import '../../../theme/skin_controller.dart';
+import '../../../widgets/origami_icon.dart';
+import '../../../widgets/origami_icons.dart';
 
 /// 点赞按钮：`watchHasLiked` 驱动选中态，点按调 `toggle`。
 ///
@@ -47,6 +51,7 @@ class LikeButton extends StatelessWidget {
   }
 }
 
+/// 折纸心点赞按钮：选中态填充朱砂，切换时做一次迸放微缩放（§6.3 点赞迸朱砂的轻量版）。
 class _LikeIconButton extends StatelessWidget {
   const _LikeIconButton({required this.liked, required this.onTap});
 
@@ -55,17 +60,25 @@ class _LikeIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton.filledTonal(
+    final skin = context.skin;
+    return IconButton(
       onPressed: onTap,
       tooltip: liked ? '取消点赞' : '点赞',
-      icon: Icon(
-        liked ? Icons.favorite : Icons.favorite_outline,
-        color: liked ? const Color(0xFFC2410C) : const Color(0xFF6B6258),
-      ),
       style: IconButton.styleFrom(
         backgroundColor: liked
-            ? const Color(0xFFC2410C).withValues(alpha: 0.12)
-            : const Color(0xFFFBF8F0),
+            ? skin.accentVermilion.withValues(alpha: 0.12)
+            : skin.surfaceCard,
+      ),
+      icon: AnimatedScale(
+        scale: liked ? 1.15 : 1.0,
+        duration: Motion.durInstant,
+        curve: Motion.curveFold,
+        child: OrigamiIcon(
+          OrigamiGlyph.heart,
+          size: 20,
+          fill: liked,
+          color: liked ? skin.accentVermilion : skin.inkSecondary,
+        ),
       ),
     );
   }

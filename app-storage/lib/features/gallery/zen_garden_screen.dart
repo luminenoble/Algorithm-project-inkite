@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../data/models/user_profile.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
+import '../../theme/skin_controller.dart';
+import '../../widgets/brush_loading.dart';
+import '../../widgets/origami_icon.dart';
+import '../../widgets/origami_icons.dart';
 
 /// 禅意花园主题房间 `/gallery/room/zen-garden`。
 ///
@@ -22,7 +26,6 @@ class ZenGardenScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final uid = AuthService.instance.currentUid;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F1E8),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -36,13 +39,11 @@ class ZenGardenScreen extends StatelessWidget {
               stream: UserRepository.instance.watchProfile(uid),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: BrushLoading());
                 }
                 final unlocked =
                     snap.data?.unlocks.rooms.contains(roomId) ?? false;
-                return unlocked
-                    ? const _UnlockedView()
-                    : const _LockedView();
+                return unlocked ? const _UnlockedView() : const _LockedView();
               },
             ),
     );
@@ -56,69 +57,65 @@ class _UnlockedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Container(
           height: 220,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFFFBF8F0), Color(0xFFE7E0D0)],
+              colors: [skin.surfaceCard, skin.paperShade],
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFB8893A), width: 1.5),
+            border: Border.all(color: skin.goldLeaf, width: 1.5),
           ),
           alignment: Alignment.center,
-          child: const Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.spa_outlined,
-                  size: 56, color: Color(0xFFB8893A)),
-              SizedBox(height: 12),
+              Icon(Icons.spa_outlined, size: 56, color: skin.goldLeaf),
+              const SizedBox(height: 12),
               Text(
                 '禅意花园',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF2B2622),
+                  color: skin.inkPrimary,
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
                 '沙纹 · 石景 · 落纸',
-                style: TextStyle(fontSize: 12, color: Color(0xFF6B6258)),
+                style: TextStyle(fontSize: 12, color: skin.inkSecondary),
               ),
             ],
           ),
         ),
         const SizedBox(height: 20),
-        const Text(
+        Text(
           '一砂一世界。\n落纸不语，自有声。',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 16,
-            height: 1.8,
-            color: Color(0xFF2B2622),
-          ),
+          style: TextStyle(fontSize: 16, height: 1.8, color: skin.inkPrimary),
         ),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFBF8F0),
+            color: skin.surfaceCard,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE7E0D0)),
+            border: Border.all(color: skin.paperShade),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.info_outline, size: 16, color: Color(0xFF6B6258)),
-              SizedBox(width: 8),
+              Icon(Icons.info_outline, size: 16, color: skin.inkSecondary),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '完整动效（沙纹光影、飘落折纸叶）将在 R12 之后补齐。',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF6B6258)),
+                  '完整动效（沙纹光影、飘落折纸叶）将在后续补齐。',
+                  style: TextStyle(fontSize: 12, color: skin.inkSecondary),
                 ),
               ),
             ],
@@ -134,6 +131,7 @@ class _LockedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -144,30 +142,27 @@ class _LockedView extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: const Color(0xFFFBF8F0),
-                border: Border.all(color: const Color(0xFFC9C0B2)),
+                color: skin.surfaceCard,
+                border: Border.all(color: skin.inkFaint),
                 borderRadius: BorderRadius.circular(16),
               ),
               alignment: Alignment.center,
-              child: const Icon(
-                Icons.lock_outline,
-                size: 40,
-                color: Color(0xFF6B6258),
-              ),
+              child: OrigamiIcon(OrigamiGlyph.lock,
+                  size: 44, color: skin.inkSecondary),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               '禅意花园未解锁',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF2B2622),
+                color: skin.inkPrimary,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               '完成首个官方挑战即可解锁',
-              style: TextStyle(fontSize: 13, color: Color(0xFF6B6258)),
+              style: TextStyle(fontSize: 13, color: skin.inkSecondary),
             ),
           ],
         ),

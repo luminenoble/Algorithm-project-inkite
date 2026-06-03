@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../theme/skin_controller.dart';
 import 'random_words.dart';
 
 /// 自由创作随机词生成器。
@@ -60,12 +61,7 @@ class _RandomWordsScreenState extends State<RandomWordsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '词数',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF6B6258),
-              ),
-            ),
+            Text('词数', style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -129,19 +125,20 @@ class _WordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBF8F0),
+        color: skin.surfaceCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE7E0D0), width: 1.5),
+        border: Border.all(color: skin.paperShade, width: 1.5),
       ),
       child: Text(
         word,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF2B2622),
+          color: skin.inkPrimary,
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/models/user_profile.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/brush_loading.dart';
 
 /// 我的 Tab：展示当前 `users/{uid}` 档案 + 登出。
 /// 角色查询（模块 G）嵌入位置由 P4 决定，本页不做。
@@ -25,7 +26,7 @@ class MeScreen extends StatelessWidget {
                 stream: UserRepository.instance.watchProfile(uid),
                 builder: (context, snap) {
                   if (snap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: BrushLoading());
                   }
                   if (snap.hasError) {
                     return Center(child: Text('读取档案失败：${snap.error}'));

@@ -4,6 +4,10 @@ import '../../../data/models/story_comment.dart';
 import '../../../data/repositories/comment_repository.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../services/auth_service.dart';
+import '../../../theme/skin_controller.dart';
+import '../../../widgets/brush_loading.dart';
+import '../../../widgets/origami_icon.dart';
+import '../../../widgets/origami_icons.dart';
 
 /// 评论区：列表 + 输入框。
 ///
@@ -66,6 +70,7 @@ class _CommentSectionState extends State<CommentSection> {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final myUid = AuthService.instance.currentUid;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,10 +79,7 @@ class _CommentSectionState extends State<CommentSection> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Text(
             '评论',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF2B2622),
-            ),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
         _InputBar(
@@ -87,13 +89,12 @@ class _CommentSectionState extends State<CommentSection> {
         ),
         const SizedBox(height: 16),
         StreamBuilder<List<StoryComment>>(
-          stream:
-              CommentRepository.instance.watchComments(widget.storyId),
+          stream: CommentRepository.instance.watchComments(widget.storyId),
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
               return const Padding(
                 padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
+                child: BrushLoading(size: 36),
               );
             }
             if (snap.hasError) {
@@ -101,17 +102,26 @@ class _CommentSectionState extends State<CommentSection> {
                 padding: const EdgeInsets.all(16),
                 child: Text(
                   '评论加载失败：${snap.error}',
-                  style: const TextStyle(color: Color(0xFF9A2D1F)),
+                  style: TextStyle(color: skin.accentSeal),
                 ),
               );
             }
             final list = snap.data ?? const [];
             if (list.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Text(
-                  '还没有评论，来留下第一条吧',
-                  style: TextStyle(color: Color(0xFF6B6258)),
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Column(
+                    children: [
+                      OrigamiIcon(OrigamiGlyph.emptyPaper,
+                          size: 40, color: skin.inkFaint),
+                      const SizedBox(height: 8),
+                      Text(
+                        '还没有评论，来留下第一条吧',
+                        style: TextStyle(color: skin.inkSecondary),
+                      ),
+                    ],
+                  ),
                 ),
               );
             }
@@ -145,6 +155,7 @@ class _InputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -153,24 +164,10 @@ class _InputBar extends StatelessWidget {
             controller: controller,
             minLines: 1,
             maxLines: 4,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               hintText: '说点什么……',
-              filled: true,
-              fillColor: const Color(0xFFFBF8F0),
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFC9C0B2)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFC9C0B2)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFC2410C)),
-              ),
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
           ),
         ),
@@ -178,18 +175,13 @@ class _InputBar extends StatelessWidget {
         FilledButton(
           onPressed: submitting ? null : onSubmit,
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFFC2410C),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
           child: submitting
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
+              ? BrushLoading(
+                  size: 16,
+                  showSlowHint: false,
+                  color: skin.paperHighlight,
                 )
               : const Text('发送'),
         ),
@@ -222,7 +214,7 @@ class _CommentRow extends StatelessWidget {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF9A2D1F),
+              backgroundColor: ctx.skin.accentSeal,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('删除'),
@@ -243,6 +235,7 @@ class _CommentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -250,15 +243,12 @@ class _CommentRow extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: const Color(0xFFE7E0D0),
+            backgroundColor: skin.paperShade,
             child: Text(
               comment.authorName.isEmpty
                   ? '?'
                   : comment.authorName.characters.first,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF2B2622),
-              ),
+              style: TextStyle(fontSize: 13, color: skin.inkPrimary),
             ),
           ),
           const SizedBox(width: 10),
@@ -270,32 +260,29 @@ class _CommentRow extends StatelessWidget {
                   children: [
                     Text(
                       comment.authorName.isEmpty ? '匿名' : comment.authorName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: Color(0xFF2B2622),
+                        color: skin.inkPrimary,
                       ),
                     ),
                     const SizedBox(width: 8),
                     if (comment.createdAt != null)
                       Text(
                         _formatDate(comment.createdAt!),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF6B6258),
-                        ),
+                        style: TextStyle(fontSize: 11, color: skin.inkSecondary),
                       ),
                     const Spacer(),
                     if (isMine)
                       InkWell(
                         onTap: () => _confirmDelete(context),
                         borderRadius: BorderRadius.circular(4),
-                        child: const Padding(
-                          padding: EdgeInsets.all(4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
                           child: Icon(
                             Icons.delete_outline,
                             size: 16,
-                            color: Color(0xFF9A2D1F),
+                            color: skin.accentSeal,
                           ),
                         ),
                       ),
@@ -304,10 +291,10 @@ class _CommentRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   comment.text,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     height: 1.5,
-                    color: Color(0xFF2B2622),
+                    color: skin.inkPrimary,
                   ),
                 ),
               ],

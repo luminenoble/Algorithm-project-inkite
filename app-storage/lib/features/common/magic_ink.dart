@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/models/user_profile.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
+import '../../theme/skin_controller.dart';
 
 /// 监听 `users.unlocks.magicInk`，未解锁时不渲染任何内容。
 ///
@@ -31,7 +32,7 @@ class MagicInkGate extends StatelessWidget {
 /// 展览厅顶部金箔横幅：`magicInk` 解锁后显示。
 ///
 /// `fronted-design.md` §8.3 / §9 设想 magicInk 解锁会带金箔点缀 + 笔触特效，
-/// 本版静态横幅是入门版，动效（`unlock_gold.json` 金箔展开）留到 R12 之后。
+/// 本版静态横幅是入门版，动效（`unlock_gold` 金箔展开）留到后续。
 class MagicInkBanner extends StatelessWidget {
   const MagicInkBanner({super.key});
 
@@ -40,40 +41,40 @@ class MagicInkBanner extends StatelessWidget {
     return MagicInkGate(
       builder: (context, unlocked) {
         if (!unlocked) return const SizedBox.shrink();
+        final skin = context.skin;
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 colors: [
-                  Color(0x1FB8893A),
-                  Color(0x0FB8893A),
+                  skin.goldLeaf.withValues(alpha: 0.12),
+                  skin.goldLeaf.withValues(alpha: 0.04),
                 ],
               ),
-              border: Border.all(color: const Color(0xFFB8893A)),
+              border: Border.all(color: skin.goldLeaf),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.auto_fix_high,
-                    size: 18, color: Color(0xFFB8893A)),
-                SizedBox(width: 10),
+                Icon(Icons.auto_fix_high, size: 18, color: skin.goldLeaf),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     '魔法墨水已激活',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF2B2622),
+                      color: skin.inkPrimary,
                     ),
                   ),
                 ),
                 Text(
                   '藏品边缘已镶金箔',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF6B6258)),
+                  style: TextStyle(fontSize: 11, color: skin.inkSecondary),
                 ),
               ],
             ),
@@ -93,25 +94,25 @@ class MagicInkChip extends StatelessWidget {
     return MagicInkGate(
       builder: (context, unlocked) {
         if (!unlocked) return const SizedBox.shrink();
+        final skin = context.skin;
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFFB8893A).withValues(alpha: 0.15),
-            border: Border.all(color: const Color(0xFFB8893A)),
+            color: skin.goldLeaf.withValues(alpha: 0.15),
+            border: Border.all(color: skin.goldLeaf),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.auto_fix_high,
-                  size: 12, color: Color(0xFFB8893A)),
-              SizedBox(width: 4),
+              Icon(Icons.auto_fix_high, size: 12, color: skin.goldLeaf),
+              const SizedBox(width: 4),
               Text(
                 '魔法墨水',
                 style: TextStyle(
                   fontSize: 11,
-                  color: Color(0xFFB8893A),
+                  color: skin.goldLeaf,
                   fontWeight: FontWeight.w500,
                 ),
               ),

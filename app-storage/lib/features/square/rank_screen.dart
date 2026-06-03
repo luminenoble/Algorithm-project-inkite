@@ -3,6 +3,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/models/story.dart';
 import '../../data/repositories/story_repository.dart';
+import '../../theme/skin_controller.dart';
+import '../../widgets/brush_loading.dart';
+import '../../widgets/origami_icon.dart';
+import '../../widgets/origami_icons.dart';
 import 'widgets/story_card.dart';
 
 /// 排行榜 `/square/rank`：按 hotScore 降序展示 Top 20。
@@ -14,8 +18,8 @@ class RankScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F1E8),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -30,7 +34,7 @@ class RankScreen extends StatelessWidget {
         ),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: BrushLoading());
           }
           if (snap.hasError) {
             return Center(
@@ -38,20 +42,20 @@ class RankScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(24),
                 child: Text(
                   '加载失败：${snap.error}',
-                  style: const TextStyle(color: Color(0xFF9A2D1F)),
+                  style: TextStyle(color: skin.accentSeal),
                 ),
               ),
             );
           }
           final stories = snap.data ?? const [];
           if (stories.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(32),
+                padding: const EdgeInsets.all(32),
                 child: Text(
                   '榜单为空\n发布一篇故事即可上榜',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF6B6258)),
+                  style: TextStyle(color: skin.inkSecondary),
                 ),
               ),
             );
@@ -83,23 +87,23 @@ class _RankHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       child: Row(
         children: [
-          const Icon(Icons.emoji_events,
-              size: 18, color: Color(0xFFB8893A)),
+          OrigamiIcon(OrigamiGlyph.seal, size: 18, color: skin.goldLeaf),
           const SizedBox(width: 8),
-          const Text(
+          Text(
             '按热度排序 · 实时更新',
-            style: TextStyle(fontSize: 13, color: Color(0xFF6B6258)),
+            style: TextStyle(fontSize: 13, color: skin.inkSecondary),
           ),
           const Spacer(),
           Text(
             'Top 20',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey[500],
+              color: skin.inkFaint,
               fontWeight: FontWeight.w500,
             ),
           ),

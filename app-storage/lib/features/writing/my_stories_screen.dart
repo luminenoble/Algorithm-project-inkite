@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../data/models/story.dart';
 import '../../data/repositories/story_repository.dart';
 import '../../services/auth_service.dart';
+import '../../theme/skin_controller.dart';
+import '../../widgets/brush_loading.dart';
 
 /// "我的故事"列表页。
 ///
@@ -48,7 +50,7 @@ class MyStoriesScreen extends StatelessWidget {
           stream: StoryRepository.instance.streamMyStories(uid),
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: BrushLoading());
             }
             final all = snap.data ?? const [];
             final drafts = all
@@ -82,10 +84,7 @@ class _StoryList extends StatelessWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
-          child: Text(
-            emptyText,
-            style: const TextStyle(color: Color(0xFF6B6258)),
-          ),
+          child: Text(emptyText, style: TextStyle(color: context.skin.inkSecondary)),
         ),
       );
     }
@@ -114,9 +113,7 @@ class _StoryRow extends StatelessWidget {
             child: const Text('取消'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF9A2D1F),
-            ),
+            style: FilledButton.styleFrom(backgroundColor: ctx.skin.accentSeal),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('删除'),
           ),
@@ -140,11 +137,10 @@ class _StoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Card(
       child: InkWell(
-        onTap: () => context.go('/writing/editor', extra: {
-          'storyId': story.id,
-        }),
+        onTap: () => context.go('/writing/editor', extra: {'storyId': story.id}),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -172,11 +168,7 @@ class _StoryRow extends StatelessWidget {
                 story.body,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF6B6258),
-                  height: 1.5,
-                ),
+                style: TextStyle(fontSize: 13, color: skin.inkSecondary, height: 1.5),
               ),
               const SizedBox(height: 8),
               Row(
@@ -184,23 +176,19 @@ class _StoryRow extends StatelessWidget {
                   if (story.updatedAt != null)
                     Text(
                       _formatDate(story.updatedAt!),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF6B6258),
-                      ),
+                      style: TextStyle(fontSize: 12, color: skin.inkSecondary),
                     ),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 18),
-                    color: const Color(0xFF6B6258),
-                    onPressed: () => context.go('/writing/editor', extra: {
-                      'storyId': story.id,
-                    }),
+                    color: skin.inkSecondary,
+                    onPressed: () => context
+                        .go('/writing/editor', extra: {'storyId': story.id}),
                     tooltip: '编辑',
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 18),
-                    color: const Color(0xFF9A2D1F),
+                    color: skin.accentSeal,
                     onPressed: () => _confirmDelete(context),
                     tooltip: '删除',
                   ),
@@ -238,20 +226,19 @@ class _ModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final isOfficial = mode == StoryMode.official;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: isOfficial
-            ? const Color(0xFFC2410C)
-            : const Color(0xFFE7E0D0),
+        color: isOfficial ? skin.accentVermilion : skin.paperShade,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         _labels[mode] ?? mode.name,
         style: TextStyle(
           fontSize: 11,
-          color: isOfficial ? Colors.white : const Color(0xFF6B6258),
+          color: isOfficial ? skin.paperHighlight : skin.inkSecondary,
           fontWeight: FontWeight.w500,
         ),
       ),

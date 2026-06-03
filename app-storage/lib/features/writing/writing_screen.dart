@@ -6,6 +6,10 @@ import '../../data/models/story.dart';
 import '../../data/repositories/challenge_repository.dart';
 import '../../data/repositories/story_repository.dart';
 import '../../services/auth_service.dart';
+import '../../theme/skin_controller.dart';
+import '../../widgets/brush_loading.dart';
+import '../../widgets/origami_icon.dart';
+import '../../widgets/origami_icons.dart';
 import 'widgets/ai_origami_card.dart';
 
 /// 写作 Tab 落地页：官方挑战入口 + 自由创作入口。
@@ -37,6 +41,7 @@ class WritingScreen extends StatelessWidget {
 class _OfficialChallengeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return StreamBuilder<Challenge?>(
       stream: ChallengeRepository.instance.watchActive(),
       builder: (context, snapshot) {
@@ -44,7 +49,7 @@ class _OfficialChallengeCard extends StatelessWidget {
           return const Card(
             child: Padding(
               padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: BrushLoading(size: 36)),
             ),
           );
         }
@@ -56,17 +61,14 @@ class _OfficialChallengeCard extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  Icon(Icons.event_busy, size: 48, color: Colors.grey[400]),
+                  OrigamiIcon(OrigamiGlyph.emptyPaper,
+                      size: 48, color: skin.inkFaint),
                   const SizedBox(height: 12),
-                  Text(
-                    '暂无活跃挑战',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text('暂无活跃挑战',
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  Text(
-                    '官方挑战会定期发布，敬请期待',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  Text('官方挑战会定期发布，敬请期待',
+                      style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
             ),
@@ -82,32 +84,24 @@ class _OfficialChallengeCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.auto_awesome, color: Color(0xFFC2410C)),
+                    OrigamiIcon(OrigamiGlyph.seal,
+                        size: 20, color: skin.accentVermilion),
                     const SizedBox(width: 8),
-                    Text(
-                      '官方挑战',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    Text('官方挑战',
+                        style: Theme.of(context).textTheme.titleMedium),
                     const Spacer(),
                     if (challenge.endAt != null)
                       _CountdownChip(endAt: challenge.endAt!),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  challenge.title,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text(challenge.title,
+                    style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   children: challenge.words
-                      .map((w) => Chip(
-                            label: Text(w),
-                            backgroundColor: const Color(0xFFF5F1E8),
-                          ))
+                      .map((w) => Chip(label: Text(w)))
                       .toList(),
                 ),
                 const SizedBox(height: 12),
@@ -127,9 +121,8 @@ class _OfficialChallengeCard extends StatelessWidget {
                       label: const Text('领取挑战，开始写作'),
                     ),
                     TextButton.icon(
-                      onPressed: () => context.go(
-                        '/writing/challenge/${challenge.id}',
-                      ),
+                      onPressed: () =>
+                          context.go('/writing/challenge/${challenge.id}'),
                       icon: const Icon(Icons.list_alt),
                       label: const Text('查看本期故事'),
                     ),
@@ -159,16 +152,17 @@ class _CountdownChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final ended = endAt.isBefore(DateTime.now());
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: ended ? const Color(0xFFC9C0B2) : const Color(0xFFC2410C),
+        color: ended ? skin.inkFaint : skin.accentVermilion,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         _label(),
-        style: const TextStyle(color: Colors.white, fontSize: 12),
+        style: TextStyle(color: skin.paperHighlight, fontSize: 12),
       ),
     );
   }
@@ -181,22 +175,19 @@ class _SubmissionStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return StreamBuilder<List<Story>>(
-      stream: StoryRepository.instance
-          .streamByChallenge(challengeId, limit: 100),
+      stream:
+          StoryRepository.instance.streamByChallenge(challengeId, limit: 100),
       builder: (context, snap) {
         final count = snap.data?.length ?? 0;
         return Row(
           children: [
-            const Icon(Icons.groups_outlined,
-                size: 16, color: Color(0xFF6B6258)),
+            Icon(Icons.groups_outlined, size: 16, color: skin.inkSecondary),
             const SizedBox(width: 6),
             Text(
               '本期已有 $count 篇故事',
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF6B6258),
-              ),
+              style: TextStyle(fontSize: 13, color: skin.inkSecondary),
             ),
           ],
         );
@@ -209,6 +200,7 @@ class _SubmissionStats extends StatelessWidget {
 class _FreeModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -218,22 +210,16 @@ class _FreeModeCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.brush, color: Color(0xFF6B6258)),
+                OrigamiIcon(OrigamiGlyph.pen, size: 20, color: skin.inkSecondary),
                 const SizedBox(width: 8),
-                Text(
-                  '自由创作',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                Text('自由创作',
+                    style: Theme.of(context).textTheme.titleMedium),
               ],
             ),
             const SizedBox(height: 12),
             Text(
               '不限题材，随心书写你的故事',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF6B6258),
-              ),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -265,6 +251,7 @@ class _FreeModeCard extends StatelessWidget {
 class _MyStoriesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     final uid = AuthService.instance.currentUid;
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -274,38 +261,31 @@ class _MyStoriesCard extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           child: Row(
             children: [
-              const Icon(Icons.menu_book_outlined, color: Color(0xFF2B2622)),
+              OrigamiIcon(OrigamiGlyph.box, size: 22, color: skin.inkPrimary),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '我的故事',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    Text('我的故事',
+                        style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 4),
                     if (uid != null)
                       StreamBuilder<List<Story>>(
-                        stream:
-                            StoryRepository.instance.streamMyStories(uid),
+                        stream: StoryRepository.instance.streamMyStories(uid),
                         builder: (context, snap) {
                           final count = snap.data?.length ?? 0;
                           return Text(
                             '共 $count 篇',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF6B6258),
-                            ),
+                            style: TextStyle(
+                                fontSize: 13, color: skin.inkSecondary),
                           );
                         },
                       ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Color(0xFF6B6258)),
+              Icon(Icons.chevron_right, color: skin.inkSecondary),
             ],
           ),
         ),
