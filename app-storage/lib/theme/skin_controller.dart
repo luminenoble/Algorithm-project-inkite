@@ -16,10 +16,10 @@ class SkinController extends ChangeNotifier {
   static final SkinController instance = SkinController._();
 
   AppSkin _skin = AppSkin.defaultSkin;
-  // 默认 reduced：翻书折叠重转场卡顿，退为轻量淡入淡出（不再每帧重建整页 +
-  // 透视/折痕渐变）。想完全无转场切 off；想要完整折纸动效（建议 release 构建下）
-  // 在「我的」页切 full。
-  MotionLevel _motion = MotionLevel.reduced;
+  // 默认 off：转场动画默认关闭（翻书折叠在 debug 下卡顿）。完整折纸动效仍保留，
+  // 在「我的」页切 full 即可启用（建议 release/profile 构建下验证流畅度），
+  // 或切 reduced 用轻量淡入淡出。
+  MotionLevel _motion = MotionLevel.off;
 
   AppSkin get skin => _skin;
   MotionLevel get motion => _motion;
