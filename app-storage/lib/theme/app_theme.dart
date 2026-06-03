@@ -10,6 +10,9 @@ import 'design_tokens.dart';
 abstract final class AppTheme {
   AppTheme._();
 
+  /// 全局字体族：pubspec 注册的 assets/fonts/msyhbd.ttf（微软雅黑 Bold）。
+  static const String fontFamily = 'Inkite';
+
   static ThemeData from(AppSkin skin) {
     final brightness = skin.dark ? Brightness.dark : Brightness.light;
     final scheme = ColorScheme.fromSeed(
@@ -34,6 +37,7 @@ abstract final class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: fontFamily,
       colorScheme: scheme,
       scaffoldBackgroundColor: skin.paperBase,
       canvasColor: skin.paperBase,
@@ -52,6 +56,7 @@ abstract final class AppTheme {
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: skin.inkPrimary,
+          fontFamily: fontFamily,
         ),
         iconTheme: IconThemeData(color: skin.inkPrimary),
       ),
@@ -70,8 +75,10 @@ abstract final class AppTheme {
         backgroundColor: skin.paperBase,
         selectedColor: skin.accentVermilion,
         side: BorderSide(color: skin.inkFaint),
-        labelStyle: TextStyle(color: skin.inkPrimary, fontSize: 13),
-        secondaryLabelStyle: TextStyle(color: skin.paperHighlight),
+        labelStyle: TextStyle(
+            color: skin.inkPrimary, fontSize: 13, fontFamily: fontFamily),
+        secondaryLabelStyle:
+            TextStyle(color: skin.paperHighlight, fontFamily: fontFamily),
         shape: RoundedRectangleBorder(borderRadius: radiusButton),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -102,8 +109,8 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationThemeData(
         filled: true,
         fillColor: skin.surfaceCard,
-        labelStyle: TextStyle(color: skin.inkSecondary),
-        hintStyle: TextStyle(color: skin.inkSecondary),
+        labelStyle: TextStyle(color: skin.inkSecondary, fontFamily: fontFamily),
+        hintStyle: TextStyle(color: skin.inkSecondary, fontFamily: fontFamily),
         border: OutlineInputBorder(
           borderRadius: radiusButton,
           borderSide: BorderSide(color: skin.inkFaint),
@@ -125,7 +132,8 @@ abstract final class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: skin.inkPrimary,
-        contentTextStyle: TextStyle(color: skin.paperHighlight),
+        contentTextStyle:
+            TextStyle(color: skin.paperHighlight, fontFamily: fontFamily),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: radiusButton),
       ),

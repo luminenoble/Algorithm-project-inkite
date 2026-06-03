@@ -68,6 +68,13 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # 全局字体：微软雅黑 Bold（从 tmp/msyhbd.ttc 抽出的单字面 .ttf）。
+  # family 名 'Inkite' 在 app_theme 里作为 ThemeData.fontFamily 使用。
+  fonts:
+    - family: Inkite
+      fonts:
+        - asset: assets/fonts/msyhbd.ttf
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
