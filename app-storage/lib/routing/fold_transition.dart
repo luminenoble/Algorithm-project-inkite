@@ -64,11 +64,6 @@ class _FoldTransition extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final skin = context.skin;
-    final curved = CurvedAnimation(
-      parent: animation,
-      curve: Motion.curveFold,
-      reverseCurve: Motion.curveFold.flipped,
-    );
     // forward：绕左缘从背面翻正进场；backward：绕右缘。
     final forward = direction == FoldDirection.forward;
     final alignment = forward ? Alignment.centerLeft : Alignment.centerRight;
@@ -76,9 +71,10 @@ class _FoldTransition extends StatelessWidget {
     final lightEnd = forward ? Alignment.centerRight : Alignment.centerLeft;
 
     return AnimatedBuilder(
-      animation: curved,
+      animation: animation,
       builder: (context, _) {
-        final v = curved.value.clamp(0.0, 1.0);
+        // 折到位顿挫曲线直接施加在进度上，避免每次 build 新建 CurvedAnimation。
+        final v = Motion.curveFold.transform(animation.value.clamp(0.0, 1.0));
         final angle = (1 - v) * (math.pi / 2) * sign;
         final transform = Matrix4.identity()
           ..setEntry(3, 2, 0.0012) // 轻微透视（§3.1）
