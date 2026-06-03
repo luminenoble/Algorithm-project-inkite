@@ -15,6 +15,7 @@ import '../features/writing/random_words_screen.dart';
 import '../features/writing/story_editor_screen.dart';
 import '../features/writing/writing_screen.dart';
 import '../services/auth_service.dart';
+import 'fold_transition.dart';
 
 /// 路由守卫：未登录跳 /login，已登录在 /login 时跳回 /writing。
 String? _redirect(BuildContext context, GoRouterState state) {
@@ -37,59 +38,76 @@ final appRouter = GoRouter(
     ShellRoute(
       builder: (_, _, child) => MainShell(child: child),
       routes: [
+        // Tab 级路由：翻页方向由 MainShell 按 Tab 索引差设定（foldDirection）。
         GoRoute(
           path: '/writing',
-          builder: (_, _) => const WritingScreen(),
+          pageBuilder: (_, state) => foldPage(state, const WritingScreen()),
           routes: [
+            // 子页一律前进向翻书折叠（§3.3）。
             GoRoute(
               path: 'editor',
-              builder: (_, state) => StoryEditorScreen(
-                extra: state.extra as Map<String, dynamic>?,
+              pageBuilder: (_, state) => foldPage(
+                state,
+                StoryEditorScreen(extra: state.extra as Map<String, dynamic>?),
+                direction: FoldDirection.forward,
               ),
             ),
             GoRoute(
               path: 'challenge/:id',
-              builder: (_, state) => ChallengeStoriesScreen(
-                challengeId: state.pathParameters['id']!,
+              pageBuilder: (_, state) => foldPage(
+                state,
+                ChallengeStoriesScreen(
+                    challengeId: state.pathParameters['id']!),
+                direction: FoldDirection.forward,
               ),
             ),
             GoRoute(
               path: 'random',
-              builder: (_, _) => const RandomWordsScreen(),
+              pageBuilder: (_, state) =>
+                  foldPage(state, const RandomWordsScreen(),
+                      direction: FoldDirection.forward),
             ),
             GoRoute(
               path: 'mine',
-              builder: (_, _) => const MyStoriesScreen(),
+              pageBuilder: (_, state) => foldPage(state, const MyStoriesScreen(),
+                  direction: FoldDirection.forward),
             ),
           ],
         ),
         GoRoute(
           path: '/square',
-          builder: (_, _) => const SquareScreen(),
+          pageBuilder: (_, state) => foldPage(state, const SquareScreen()),
           routes: [
             GoRoute(
               path: 'story/:id',
-              builder: (_, state) => StoryDetailScreen(
-                storyId: state.pathParameters['id']!,
+              pageBuilder: (_, state) => foldPage(
+                state,
+                StoryDetailScreen(storyId: state.pathParameters['id']!),
+                direction: FoldDirection.forward,
               ),
             ),
             GoRoute(
               path: 'rank',
-              builder: (_, _) => const RankScreen(),
+              pageBuilder: (_, state) => foldPage(state, const RankScreen(),
+                  direction: FoldDirection.forward),
             ),
           ],
         ),
         GoRoute(
           path: '/gallery',
-          builder: (_, _) => const GalleryScreen(),
+          pageBuilder: (_, state) => foldPage(state, const GalleryScreen()),
           routes: [
             GoRoute(
               path: 'room/zen-garden',
-              builder: (_, _) => const ZenGardenScreen(),
+              pageBuilder: (_, state) => foldPage(state, const ZenGardenScreen(),
+                  direction: FoldDirection.forward),
             ),
           ],
         ),
-        GoRoute(path: '/me', builder: (_, _) => const MeScreen()),
+        GoRoute(
+          path: '/me',
+          pageBuilder: (_, state) => foldPage(state, const MeScreen()),
+        ),
       ],
     ),
   ],
