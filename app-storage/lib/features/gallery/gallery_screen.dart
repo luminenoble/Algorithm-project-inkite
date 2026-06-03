@@ -5,10 +5,12 @@ import '../../data/models/user_profile.dart';
 import '../../data/repositories/origami_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
+import '../../theme/motion.dart';
 import '../../theme/skin_controller.dart';
 import '../../widgets/brush_loading.dart';
 import '../../widgets/origami_icon.dart';
 import '../../widgets/origami_icons.dart';
+import '../../widgets/paper_bird_overlay.dart';
 import '../common/magic_ink.dart';
 import 'widgets/origami_card.dart';
 import 'widgets/room_entry_card.dart';
@@ -17,23 +19,66 @@ import 'widgets/room_entry_card.dart';
 ///
 /// 顶部主题房间入口（T4.3），下方折纸藏品网格（T4.1）。
 /// T4.4 在此挂金箔点缀。
-class GalleryScreen extends StatelessWidget {
+class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
+
+  @override
+  State<GalleryScreen> createState() => _GalleryScreenState();
+}
+
+class _GalleryScreenState extends State<GalleryScreen> {
+  /// 会话级：上次放鸟时刻，避免来回切 Tab 反复触发（§4 频繁降级）。
+  static DateTime? _lastBirdAt;
+  bool _entered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 翻书折叠落定后再放鸟（§3.2 特例）：post-frame 触发。
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onEnter());
+  }
+
+  void _onEnter() {
+    if (!mounted) return;
+    final now = DateTime.now();
+    final last = _lastBirdAt;
+    final shouldFly =
+        last == null || now.difference(last) > const Duration(seconds: 30);
+    if (shouldFly) {
+      _lastBirdAt = now;
+      final media = MediaQuery.of(context);
+      // 纸鸟从屏幕左下起飞，沿弧线飞向右上离场（§4）。
+      launchPaperBird(
+        context,
+        from: Offset(40, media.size.height - 140),
+        to: Offset(media.size.width - 48, media.padding.top + 64),
+      );
+    }
+    setState(() => _entered = true); // 触发画廊内容淡入落定
+  }
 
   @override
   Widget build(BuildContext context) {
     final uid = AuthService.instance.currentUid;
+    // 鸟飞过后画廊内容轻微淡入落定（§4.4 的轻量版）。
+    final visible = _entered || !context.motion.useRichMotion;
     return Scaffold(
       appBar: AppBar(title: const Text('展览厅')),
       body: uid == null
           ? const Center(child: Text('请先登录'))
-          : CustomScrollView(
-              slivers: [
-                const SliverToBoxAdapter(child: MagicInkBanner()),
-                const SliverToBoxAdapter(child: RoomEntryCard()),
-                const SliverToBoxAdapter(child: _SectionLabel(text: '折纸藏品')),
-                _OrigamiSliver(uid: uid),
-              ],
+          : AnimatedOpacity(
+              opacity: visible ? 1 : 0,
+              duration: Motion.durFold,
+              curve: Motion.curveFold,
+              child: CustomScrollView(
+                slivers: [
+                  const SliverToBoxAdapter(child: MagicInkBanner()),
+                  const SliverToBoxAdapter(child: RoomEntryCard()),
+                  const SliverToBoxAdapter(
+                      child: _SectionLabel(text: '折纸藏品')),
+                  _OrigamiSliver(uid: uid),
+                ],
+              ),
             ),
     );
   }

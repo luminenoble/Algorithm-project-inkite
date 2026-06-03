@@ -6,6 +6,9 @@ import '../../data/repositories/story_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
 import '../../services/origami_service.dart';
+import '../../theme/skin_controller.dart';
+import '../../widgets/brush_loading.dart';
+import '../../widgets/paper_bird_overlay.dart';
 import '../common/magic_ink.dart';
 
 /// 故事编辑器页面。
@@ -58,15 +61,13 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
       _mode = _parseMode(extra['mode']);
       _challengeId = extra['challengeId'] as String?;
       _words = (extra['words'] as List?)?.cast<String>();
-      _inspirationWords =
-          (extra['inspirationWords'] as List?)?.cast<String>();
+      _inspirationWords = (extra['inspirationWords'] as List?)?.cast<String>();
     }
   }
 
   Future<void> _loadExisting() async {
     try {
-      final story =
-          await StoryRepository.instance.getById(_editingStoryId!);
+      final story = await StoryRepository.instance.getById(_editingStoryId!);
       if (!mounted) return;
       if (story == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -109,6 +110,15 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
 
   Future<void> _submit({required bool publish}) async {
     if (!_formKey.currentState!.validate()) return;
+
+    // 折纸动效（§6）：发布 → 纸鸟飞向广场方向；保存 → 纸张合拢印记。
+    // 与异步写库并行，先给即时反馈；动效级别非 full 时内部自动跳过。
+    if (publish) {
+      launchPaperBird(context);
+    } else {
+      playPaperFold(context, label: '已保存');
+    }
+
     setState(() => _submitting = true);
 
     try {
@@ -150,10 +160,13 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
 
       // T4.2：官方挑战发布成功 → fire-and-forget 调 generateOrigami。
       // CF 幂等保证重复发布不会刷出第二件折纸；失败仅日志，不影响发布主流程。
-      final triggerOrigami = publish &&
-          _mode == StoryMode.official &&
-          _challengeId != null;
+      final triggerOrigami =
+          publish && _mode == StoryMode.official && _challengeId != null;
       if (triggerOrigami) {
+        // §6.2 step5：官方挑战发布串接金箔奖励鸟，飞向展览厅方向。
+        if (mounted) {
+          launchPaperBird(context, color: context.skin.goldLeaf);
+        }
         // ignore: discarded_futures
         OrigamiService.instance.generate(challengeId: _challengeId!).then(
           (r) => debugPrint(
@@ -219,7 +232,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
         ],
       ),
       body: (_loading || _submitting)
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: BrushLoading())
           : Form(
               key: _formKey,
               child: ListView(
@@ -245,9 +258,9 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                     decoration: const InputDecoration(
                       labelText: '标题',
                       hintText: '给你的故事起个名字',
-                      border: OutlineInputBorder(),
                     ),
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w500),
                     validator: (v) =>
                         (v == null || v.trim().isEmpty) ? '请输入标题' : null,
                   ),
@@ -257,7 +270,6 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                     decoration: const InputDecoration(
                       labelText: '正文',
                       hintText: '开始你的故事……',
-                      border: OutlineInputBorder(),
                       alignLabelWithHint: true,
                     ),
                     maxLines: null,
@@ -280,23 +292,20 @@ class _InspirationWordsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBF8F0),
+        color: skin.surfaceCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE7E0D0), style: BorderStyle.solid),
+        border: Border.all(color: skin.paperShade),
       ),
       child: Row(
         children: [
-          const Icon(Icons.shuffle, size: 20, color: Color(0xFF6B6258)),
+          Icon(Icons.shuffle, size: 20, color: skin.inkSecondary),
           const SizedBox(width: 12),
-          Text(
-            '灵感词：',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFF6B6258),
-            ),
-          ),
+          Text('灵感词：',
+              style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(width: 8),
           Expanded(
             child: Wrap(
@@ -305,10 +314,10 @@ class _InspirationWordsBar extends StatelessWidget {
               children: words
                   .map((w) => Text(
                         w,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF2B2622),
+                          color: skin.inkPrimary,
                         ),
                       ))
                   .toList(),
@@ -327,28 +336,26 @@ class _ChallengeWordsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F1E8),
+        color: skin.paperBase,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE7E0D0)),
+        border: Border.all(color: skin.paperShade),
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome, size: 20, color: Color(0xFF9A2D1F)),
+          Icon(Icons.auto_awesome, size: 20, color: skin.accentSeal),
           const SizedBox(width: 12),
-          Text(
-            '挑战词：',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFF6B6258),
-            ),
-          ),
+          Text('挑战词：',
+              style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(width: 8),
           ...words.map((w) => Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: Chip(
-                  label: Text(w, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  label: Text(w,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                   visualDensity: VisualDensity.compact,
                 ),
               )),
