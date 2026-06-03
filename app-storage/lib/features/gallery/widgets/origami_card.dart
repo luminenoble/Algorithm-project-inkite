@@ -42,11 +42,13 @@ class OrigamiCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AspectRatio(
-            aspectRatio: 1,
+          // 用 Expanded 占满标签行之上的空间，避免刚性 1:1 与网格 childAspectRatio
+          // 不匹配导致的「BOTTOM OVERFLOWED」溢出。
+          Expanded(
             child: Image.network(
               origami.imageUrl,
               fit: BoxFit.cover,
+              width: double.infinity,
               loadingBuilder: (_, child, progress) {
                 if (progress == null) return child;
                 return Container(
