@@ -3,6 +3,7 @@ import { logger } from "firebase-functions/v2";
 import { defineSecret } from "firebase-functions/params";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { v3 } from "@google-cloud/translate";
 
 /**
  * 默认风格枚举（决定 `pickStyleByHash` 落点 + 默认 prompt 字典 key）。
@@ -20,12 +21,13 @@ type DefaultStyle = (typeof STYLES)[number];
 const REPLICATE_API_TOKEN = defineSecret("REPLICATE_API_TOKEN");
 
 /**
- * Google Cloud Translation API key（v2 REST），把中文关键词翻成英文喂 FLUX。
- * 设置：GCP 启用 "Cloud Translation API" → 建 API key →
- *   `firebase functions:secrets:set GOOGLE_TRANSLATE_API_KEY`
- * 未设置 / 失败时自动回退原始关键词（不阻塞出图，仅画面与中文词义可能不符）。
+ * Cloud Translation v3 client，单例复用。鉴权走 **ADC（应用默认凭据）**——
+ * 即 Cloud Functions 运行时自带的服务账号，无需任何 API key / secret。
+ * 部署前需：GCP 启用 "Cloud Translation API"；若运行时服务账号无翻译权限，
+ * 授予 "Cloud Translation API User"（默认 Editor 角色已含）。
  */
-export const GOOGLE_TRANSLATE_API_KEY = defineSecret("GOOGLE_TRANSLATE_API_KEY");
+let translateClient: v3.TranslationServiceClient | null = null;
+let cachedProjectId: string | null = null;
 
 interface GenerateRequest {
   challengeId: string;
@@ -348,51 +350,37 @@ export async function tryReplicateWithWords(
 }
 
 /**
- * 关键词中文 → 英文（FLUX 英文模型用）。Google Cloud Translation v2 REST，
- * `target=en` 并自动检测源语言（已是英文则基本原样返回）。
+ * 关键词中文 → 英文（FLUX 英文模型用）。Cloud Translation **v3** + ADC 鉴权
+ * （运行时服务账号，无需 key）。`targetLanguageCode=en`、不指定源语言即自动
+ * 检测（已是英文则原样返回）。8s 超时。
  *
- * 任何失败（未配 key / 网络 / 配额 / 8s 超时 / 返回结构异常）都**回退原始关键词**，
+ * 任何失败（未启用 API / 无权限 / 网络 / 超时 / 返回结构异常）都**回退原始关键词**，
  * 绝不抛错——翻译只是增强，出图链路不依赖它。
  */
 export async function translateToEnglish(words: string[]): Promise<string[]> {
-  const key = GOOGLE_TRANSLATE_API_KEY.value();
-  if (!key) {
-    logger.warn("[translate] GOOGLE_TRANSLATE_API_KEY 未配置，使用原始关键词");
-    return words;
-  }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8_000);
   try {
-    const res = await fetch(
-      `https://translation.googleapis.com/language/translate/v2?key=${key}`,
+    translateClient ??= new v3.TranslationServiceClient();
+    cachedProjectId ??= await translateClient.getProjectId();
+    const [response] = await translateClient.translateText(
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q: words, target: "en", format: "text" }),
-        signal: controller.signal,
+        parent: `projects/${cachedProjectId}/locations/global`,
+        contents: words,
+        mimeType: "text/plain",
+        targetLanguageCode: "en",
       },
+      { timeout: 8_000 },
     );
-    if (!res.ok) {
-      throw new Error(`translate ${res.status}: ${await res.text()}`);
-    }
-    const json = (await res.json()) as {
-      data?: { translations?: Array<{ translatedText?: string }> };
-    };
-    const out = json.data?.translations;
-    if (!out || out.length !== words.length) return words;
-    const translated = out.map((t, i) => {
+    const translations = response.translations;
+    if (!translations || translations.length !== words.length) return words;
+    const out = translations.map((t, i) => {
       const s = (t.translatedText ?? "").trim();
       return s.length > 0 ? s : words[i];
     });
-    logger.info(
-      `[translate] ${words.join("/")} → ${translated.join("/")}`,
-    );
-    return translated;
+    logger.info(`[translate] ${words.join("/")} → ${out.join("/")}`);
+    return out;
   } catch (e) {
     logger.warn(`[translate] 失败，回退原始关键词: ${e}`);
     return words;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
