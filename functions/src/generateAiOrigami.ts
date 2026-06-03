@@ -3,7 +3,10 @@ import { logger } from "firebase-functions/v2";
 import { defineSecret } from "firebase-functions/params";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
-import { tryReplicateWithWords } from "./generateOrigami";
+import {
+  tryReplicateWithWords,
+  GOOGLE_TRANSLATE_API_KEY,
+} from "./generateOrigami";
 import { consumeAiQuota, refundAiQuota } from "./aiQuota";
 
 const REPLICATE_API_TOKEN = defineSecret("REPLICATE_API_TOKEN");
@@ -45,7 +48,7 @@ interface AiGenerateResponse {
  * 鉴权：同 generateOrigami，emulator 走 `__testUid`，prod 必须 `request.auth`。
  */
 export const generateAiOrigami = onCall<AiGenerateRequest>(
-  { secrets: [REPLICATE_API_TOKEN] },
+  { secrets: [REPLICATE_API_TOKEN, GOOGLE_TRANSLATE_API_KEY] },
   async (request): Promise<AiGenerateResponse> => {
     const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
     const uid =

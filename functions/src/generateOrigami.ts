@@ -19,6 +19,14 @@ type DefaultStyle = (typeof STYLES)[number];
  */
 const REPLICATE_API_TOKEN = defineSecret("REPLICATE_API_TOKEN");
 
+/**
+ * Google Cloud Translation API key（v2 REST），把中文关键词翻成英文喂 FLUX。
+ * 设置：GCP 启用 "Cloud Translation API" → 建 API key →
+ *   `firebase functions:secrets:set GOOGLE_TRANSLATE_API_KEY`
+ * 未设置 / 失败时自动回退原始关键词（不阻塞出图，仅画面与中文词义可能不符）。
+ */
+export const GOOGLE_TRANSLATE_API_KEY = defineSecret("GOOGLE_TRANSLATE_API_KEY");
+
 interface GenerateRequest {
   challengeId: string;
   style?: string;
@@ -303,15 +311,17 @@ export async function runReplicate(
  * （T1.8b live=true 路径仍用此入口。）
  */
 export async function tryReplicate(style: string): Promise<string> {
+  // 同 tryReplicateWithWords：正向 prompt 不出现 "text"（FLUX 无负向提示，
+  //   "no text" 反而会招来文字），均为英文描述。
   const defaultPrompts: Record<DefaultStyle, string> = {
-    zen: "minimal origami crane, cream rice paper background, soft natural lighting, paper texture, top-down studio photo, no text",
+    zen: "minimal origami crane, cream rice paper background, soft natural lighting, paper texture, top-down studio photo",
     steampunk:
-      "steampunk origami mechanical bird with tiny brass gears and copper wires, on aged parchment, dramatic side light, no text",
-    ink: "ink wash origami crane in sumi-e style, calligraphy paper background, monochrome black ink, no text",
+      "steampunk origami mechanical bird with tiny brass gears and copper wires, on aged parchment, dramatic side light",
+    ink: "ink wash origami crane in sumi-e style, calligraphy paper background, monochrome black ink",
   };
   const prompt =
     defaultPrompts[style as DefaultStyle] ??
-    `single origami paper craft, ${style} theme, paper texture, top-down studio photo, neutral background, no text`;
+    `single origami paper craft, ${style} theme, paper texture, top-down studio photo, neutral background`;
   return runReplicate(prompt, style);
 }
 
@@ -322,9 +332,68 @@ export async function tryReplicate(style: string): Promise<string> {
 export async function tryReplicateWithWords(
   words: string[],
 ): Promise<string> {
-  const joined = words.map((w) => w.trim()).filter((w) => w).join(", ");
-  const prompt = `single origami paper craft expressing themes of ${joined}, on natural paper background, soft natural lighting, paper texture, top-down studio photo, no text`;
+  // FLUX Schnell 以英文语料训练，几乎无法理解中文关键词（传中文会被忽略、
+  //   甚至当作"画中文字"渲染成乱码）。故先把关键词翻成英文再入 prompt；
+  //   翻译失败自动回退原词，不阻塞出图。
+  const english = await translateToEnglish(words);
+  const subject = english.map((w) => w.trim()).filter((w) => w).join(", ");
+  // 不要在正向 prompt 里出现 "text"/"no text"：FLUX 无负向提示，反而会把
+  //   "text" 当成要画的内容。靠"不提文字"+ 英文关键词来避免乱码。
+  const prompt =
+    `a single delicate folded origami paper sculpture inspired by ${subject}, ` +
+    "crisp clean paper folds, handmade washi paper texture, " +
+    "plain off-white studio backdrop, soft even lighting, centered composition, " +
+    "photographed top-down, highly detailed product photo";
   return runReplicate(prompt, "free");
+}
+
+/**
+ * 关键词中文 → 英文（FLUX 英文模型用）。Google Cloud Translation v2 REST，
+ * `target=en` 并自动检测源语言（已是英文则基本原样返回）。
+ *
+ * 任何失败（未配 key / 网络 / 配额 / 8s 超时 / 返回结构异常）都**回退原始关键词**，
+ * 绝不抛错——翻译只是增强，出图链路不依赖它。
+ */
+export async function translateToEnglish(words: string[]): Promise<string[]> {
+  const key = GOOGLE_TRANSLATE_API_KEY.value();
+  if (!key) {
+    logger.warn("[translate] GOOGLE_TRANSLATE_API_KEY 未配置，使用原始关键词");
+    return words;
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const res = await fetch(
+      `https://translation.googleapis.com/language/translate/v2?key=${key}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q: words, target: "en", format: "text" }),
+        signal: controller.signal,
+      },
+    );
+    if (!res.ok) {
+      throw new Error(`translate ${res.status}: ${await res.text()}`);
+    }
+    const json = (await res.json()) as {
+      data?: { translations?: Array<{ translatedText?: string }> };
+    };
+    const out = json.data?.translations;
+    if (!out || out.length !== words.length) return words;
+    const translated = out.map((t, i) => {
+      const s = (t.translatedText ?? "").trim();
+      return s.length > 0 ? s : words[i];
+    });
+    logger.info(
+      `[translate] ${words.join("/")} → ${translated.join("/")}`,
+    );
+    return translated;
+  } catch (e) {
+    logger.warn(`[translate] 失败，回退原始关键词: ${e}`);
+    return words;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
