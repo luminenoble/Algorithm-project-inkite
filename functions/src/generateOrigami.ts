@@ -272,6 +272,8 @@ export async function runReplicate(
             aspect_ratio: "1:1",
             output_format: "png",
             num_outputs: 1,
+            // bf16 全精度：默认 go_fast:true 走 fp8 更快但更糊，演示重质量。
+            go_fast: false,
           },
         }),
         signal: controller.signal,
