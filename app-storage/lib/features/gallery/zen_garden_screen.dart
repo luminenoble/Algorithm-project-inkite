@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/models/user_profile.dart';
-import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
 import '../../theme/skin_controller.dart';
-import '../../widgets/brush_loading.dart';
 import '../../widgets/origami_icon.dart';
 import '../../widgets/origami_icons.dart';
+import '../../widgets/unlock_builder.dart';
+import 'hall.dart';
 
 /// 禅意花园主题房间 `/gallery/room/zen-garden`。
 ///
@@ -35,14 +34,10 @@ class ZenGardenScreen extends StatelessWidget {
       ),
       body: uid == null
           ? const Center(child: Text('请先登录'))
-          : StreamBuilder<UserProfile?>(
-              stream: UserRepository.instance.watchProfile(uid),
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: BrushLoading());
-                }
-                final unlocked =
-                    snap.data?.unlocks.rooms.contains(roomId) ?? false;
+          : UnlockBuilder(
+              builder: (context, resolver) {
+                final zen = galleryHalls.firstWhere((h) => h.id == 'zen');
+                final unlocked = zen.unlockedBy(resolver);
                 return unlocked ? const _UnlockedView() : const _LockedView();
               },
             ),
@@ -161,7 +156,7 @@ class _LockedView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '完成首个官方挑战即可解锁',
+              '以「松 / 月 / 石」发布官方故事即可解锁',
               style: TextStyle(fontSize: 13, color: skin.inkSecondary),
             ),
           ],

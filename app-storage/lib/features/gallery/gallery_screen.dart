@@ -1,24 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/models/origami.dart';
-import '../../data/models/user_profile.dart';
 import '../../data/repositories/origami_repository.dart';
-import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
+import '../../theme/ink_skin.dart';
 import '../../theme/motion.dart';
 import '../../theme/skin_controller.dart';
 import '../../widgets/brush_loading.dart';
 import '../../widgets/origami_icon.dart';
 import '../../widgets/origami_icons.dart';
 import '../../widgets/paper_bird_overlay.dart';
+import '../../widgets/unlock_builder.dart';
 import '../common/magic_ink.dart';
+import 'hall.dart';
+import 'widgets/hall_switcher.dart';
 import 'widgets/origami_card.dart';
-import 'widgets/room_entry_card.dart';
 
 /// 展览厅 Tab 主屏。
 ///
-/// 顶部主题房间入口（T4.3），下方折纸藏品网格（T4.1）。
-/// T4.4 在此挂金箔点缀。
+/// 顶部展馆切换器（默认馆显示全部，主题馆按 style 过滤、词语解锁），
+/// 下方折纸藏品网格（T4.1）。魔法墨水解锁时挂金箔点缀（T4.4）。
 class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
 
@@ -30,6 +32,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
   /// 会话级：上次放鸟时刻，避免来回切 Tab 反复触发（§4 频繁降级）。
   static DateTime? _lastBirdAt;
   bool _entered = false;
+
+  /// 当前所选展馆（默认馆）。
+  GalleryHall _hall = galleryHalls.first;
 
   @override
   void initState() {
@@ -70,16 +75,93 @@ class _GalleryScreenState extends State<GalleryScreen> {
               opacity: visible ? 1 : 0,
               duration: Motion.durFold,
               curve: Motion.curveFold,
-              child: CustomScrollView(
-                slivers: [
-                  const SliverToBoxAdapter(child: MagicInkBanner()),
-                  const SliverToBoxAdapter(child: RoomEntryCard()),
-                  const SliverToBoxAdapter(
-                      child: _SectionLabel(text: '折纸藏品')),
-                  _OrigamiSliver(uid: uid),
-                ],
+              child: UnlockBuilder(
+                builder: (context, resolver) {
+                  // 若所选主题馆未解锁（极少见：发布被撤回），回落默认馆。
+                  if (!_hall.unlockedBy(resolver)) {
+                    _hall = galleryHalls.first;
+                  }
+                  final goldEdge = resolver.inkUnlocked(InkSkin.magicFlow);
+                  return CustomScrollView(
+                    slivers: [
+                      const SliverToBoxAdapter(child: MagicInkBanner()),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 12, bottom: 4),
+                          child: HallSwitcher(
+                            resolver: resolver,
+                            selectedId: _hall.id,
+                            onSelect: (h) => setState(() => _hall = h),
+                          ),
+                        ),
+                      ),
+                      if (_hall.id == 'zen')
+                        const SliverToBoxAdapter(child: _ZenHallBanner()),
+                      SliverToBoxAdapter(
+                        child: _SectionLabel(text: '${_hall.name} · 折纸藏品'),
+                      ),
+                      _OrigamiSliver(uid: uid, hall: _hall, goldEdge: goldEdge),
+                    ],
+                  );
+                },
               ),
             ),
+    );
+  }
+}
+
+/// 禅意阁选中时的沉浸入口 banner。
+class _ZenHallBanner extends StatelessWidget {
+  const _ZenHallBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final skin = context.skin;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Material(
+        color: skin.surfaceCard,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => context.go('/gallery/room/zen-garden'),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: skin.goldLeaf, width: 1.2),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.spa_outlined, size: 26, color: skin.goldLeaf),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '进入沉浸花园',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: skin.inkPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '沙纹 · 石景 · 落纸',
+                        style:
+                            TextStyle(fontSize: 12, color: skin.inkSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: skin.inkPrimary),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -112,24 +194,13 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _OrigamiSliver extends StatelessWidget {
-  const _OrigamiSliver({required this.uid});
+  const _OrigamiSliver({
+    required this.uid,
+    required this.hall,
+    required this.goldEdge,
+  });
   final String uid;
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<UserProfile?>(
-      stream: UserRepository.instance.watchProfile(uid),
-      builder: (context, profileSnap) {
-        final goldEdge = profileSnap.data?.unlocks.magicInk ?? false;
-        return _OrigamiInner(uid: uid, goldEdge: goldEdge);
-      },
-    );
-  }
-}
-
-class _OrigamiInner extends StatelessWidget {
-  const _OrigamiInner({required this.uid, required this.goldEdge});
-  final String uid;
+  final GalleryHall hall;
   final bool goldEdge;
 
   @override
@@ -157,11 +228,12 @@ class _OrigamiInner extends StatelessWidget {
             ),
           );
         }
-        final list = snap.data ?? const [];
+        final all = snap.data ?? const <Origami>[];
+        final list = all.where(hall.accepts).toList(growable: false);
         if (list.isEmpty) {
-          return const SliverFillRemaining(
+          return SliverFillRemaining(
             hasScrollBody: false,
-            child: _EmptyState(),
+            child: _EmptyState(hall: hall),
           );
         }
         return SliverPadding(
@@ -186,11 +258,13 @@ class _OrigamiInner extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({required this.hall});
+  final GalleryHall hall;
 
   @override
   Widget build(BuildContext context) {
     final skin = context.skin;
+    final isDefault = hall.isDefault;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -200,7 +274,7 @@ class _EmptyState extends StatelessWidget {
             OrigamiIcon(OrigamiGlyph.emptyPaper, size: 64, color: skin.inkFaint),
             const SizedBox(height: 16),
             Text(
-              '还没有折纸藏品',
+              isDefault ? '还没有折纸藏品' : '${hall.name}暂无藏品',
               style: TextStyle(
                 fontSize: 16,
                 color: skin.inkPrimary,
@@ -209,7 +283,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              '完成官方挑战，解锁第一件折纸',
+              isDefault ? '完成官方挑战，解锁第一件折纸' : '完成该主题的官方挑战即可收藏',
               style: TextStyle(fontSize: 13, color: skin.inkSecondary),
             ),
           ],

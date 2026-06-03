@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/models/user_profile.dart';
 import '../../data/repositories/user_repository.dart';
+import '../../data/unlock_state.dart';
 import '../../services/auth_service.dart';
 import '../../theme/ink_skin.dart';
 import '../../theme/motion.dart';
@@ -10,6 +11,8 @@ import '../../theme/skin_controller.dart';
 import '../../widgets/brush_loading.dart';
 import '../../widgets/origami_icon.dart';
 import '../../widgets/origami_icons.dart';
+import '../../widgets/unlock_builder.dart';
+import '../gallery/hall.dart';
 
 /// 我的 Tab：展示当前 `users/{uid}` 档案 + 登出。
 /// 角色查询（模块 G）嵌入位置由 P4 决定，本页不做。
@@ -49,10 +52,15 @@ class MeScreen extends StatelessWidget {
                       if (profile != null) ...[
                         _StatsCard(stats: profile.stats),
                         const SizedBox(height: 12),
-                        _UnlocksCard(unlocks: profile.unlocks),
-                        const SizedBox(height: 12),
-                        _SkinSection(
-                            magicInkUnlocked: profile.unlocks.magicInk),
+                        UnlockBuilder(
+                          builder: (context, resolver) => Column(
+                            children: [
+                              _UnlockGuideCard(resolver: resolver),
+                              const SizedBox(height: 12),
+                              _SkinSection(resolver: resolver),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         const _MotionSection(),
                       ] else
@@ -166,42 +174,85 @@ class _StatBlock extends StatelessWidget {
   }
 }
 
-class _UnlocksCard extends StatelessWidget {
-  const _UnlocksCard({required this.unlocks});
+/// 解锁指引：列出每件可解锁奖励（纸 / 墨 / 展馆）及其所需三词，
+/// 已解锁打勾、未解锁显锁。直接告诉演示者「写哪三词」即可解锁。
+class _UnlockGuideCard extends StatelessWidget {
+  const _UnlockGuideCard({required this.resolver});
 
-  final UserUnlocks unlocks;
+  final UnlockResolver resolver;
 
   @override
   Widget build(BuildContext context) {
+    final skin = context.skin;
+    final rows = <_GuideRow>[
+      for (final p in PaperSkin.presets)
+        if (p.unlockWords != null)
+          _GuideRow('纸 · ${p.displayName}', p.unlockWords!,
+              resolver.paperUnlocked(p)),
+      for (final i in InkSkin.presets)
+        if (i.unlockWords != null)
+          _GuideRow('墨 · ${i.displayName}', i.unlockWords!,
+              resolver.inkUnlocked(i)),
+      for (final h in galleryHalls)
+        if (!h.isDefault && h.unlockWords != null)
+          _GuideRow('馆 · ${h.name}', h.unlockWords!, h.unlockedBy(resolver)),
+    ];
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('解锁状态', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  unlocks.magicInk ? Icons.check_circle : Icons.lock_outline,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Text(unlocks.magicInk ? '魔法墨水已解锁' : '魔法墨水未解锁'),
-              ],
-            ),
-            const SizedBox(height: 6),
+            Text('解锁指引', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
             Text(
-              unlocks.rooms.isEmpty
-                  ? '主题房间：暂无'
-                  : '主题房间：${unlocks.rooms.join(", ")}',
+              '以对应三词发布官方故事即可解锁',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
+            const SizedBox(height: 10),
+            for (final r in rows)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      r.unlocked ? Icons.check_circle : Icons.lock_outline,
+                      size: 18,
+                      color: r.unlocked ? skin.goldLeaf : skin.inkFaint,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        r.label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: skin.inkPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      r.words.join(' / '),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: r.unlocked ? skin.inkSecondary : skin.accentSeal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     );
   }
+}
+
+class _GuideRow {
+  const _GuideRow(this.label, this.words, this.unlocked);
+  final String label;
+  final List<String> words;
+  final bool unlocked;
 }
 
 /// 皮肤切换区（`docs/fronted-design.md` §8.2）。
@@ -210,9 +261,9 @@ class _UnlocksCard extends StatelessWidget {
 /// 未解锁墨水（魔法墨水）显示锁形，点按提示解锁条件——皮肤系统**只读**
 /// `users.unlocks`，绝不写库（§8.3）。
 class _SkinSection extends StatelessWidget {
-  const _SkinSection({required this.magicInkUnlocked});
+  const _SkinSection({required this.resolver});
 
-  final bool magicInkUnlocked;
+  final UnlockResolver resolver;
 
   @override
   Widget build(BuildContext context) {
@@ -237,7 +288,14 @@ class _SkinSection extends StatelessWidget {
                     _PaperSwatch(
                       paper: p,
                       selected: p.id == skin.paper.id,
-                      onTap: () => controller.setPaper(p),
+                      locked: !resolver.paperUnlocked(p),
+                      onTap: () {
+                        if (!resolver.paperUnlocked(p)) {
+                          _hint(context, p.unlockWords);
+                          return;
+                        }
+                        controller.setPaper(p);
+                      },
                     ),
                 ],
               ),
@@ -254,13 +312,10 @@ class _SkinSection extends StatelessWidget {
                     _InkSwatch(
                       ink: ink,
                       selected: ink.id == skin.ink.id,
-                      locked: ink.requiresUnlock && !magicInkUnlocked,
+                      locked: !resolver.inkUnlocked(ink),
                       onTap: () {
-                        if (ink.requiresUnlock && !magicInkUnlocked) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('魔法墨水：互动分达标后自动解锁')),
-                          );
+                        if (!resolver.inkUnlocked(ink)) {
+                          _hint(context, ink.unlockWords);
                           return;
                         }
                         controller.setInk(ink);
@@ -274,23 +329,33 @@ class _SkinSection extends StatelessWidget {
       ),
     );
   }
+
+  void _hint(BuildContext context, List<String>? words) {
+    final w = words?.join(' / ') ?? '';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('「$w」—— 以这三词发布官方故事即可解锁')),
+    );
+  }
 }
 
 class _PaperSwatch extends StatelessWidget {
   const _PaperSwatch({
     required this.paper,
     required this.selected,
+    required this.locked,
     required this.onTap,
   });
 
   final PaperSkin paper;
   final bool selected;
+  final bool locked;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return _SwatchFrame(
       selected: selected,
+      locked: locked,
       label: paper.displayName,
       onTap: onTap,
       preview: Column(

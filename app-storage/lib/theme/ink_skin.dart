@@ -29,6 +29,7 @@ class InkSkin {
     this.strokeEffect = InkStrokeEffect.none,
     this.requiresUnlock = false,
     this.gradientStroke,
+    this.unlockWords,
   });
 
   final String id;
@@ -50,6 +51,10 @@ class InkSkin {
   /// 渐变笔触用色（`strokeEffect == gradient` 时）。
   final List<Color>? gradientStroke;
 
+  /// 解锁绑定的三个官方词语（null/空 = 免费）。
+  /// 用户已发布故事 `words` 命中即解锁；魔法墨水另认旧 `magicInk` 旗标（OR）。
+  final List<String>? unlockWords;
+
   /// 默认墨水「松烟墨」—— 取 [DesignTokens] 默认值。
   static const pineSoot = InkSkin(
     id: 'pine_soot',
@@ -62,7 +67,7 @@ class InkSkin {
     goldLeaf: DesignTokens.goldLeaf,
   );
 
-  /// 预置「朱砂」—— 统一改点缀，演示墨水切换。
+  /// 预置「朱砂」—— 词语解锁：火 / 朱 / 印。
   static const vermilion = InkSkin(
     id: 'vermilion',
     displayName: '朱砂',
@@ -72,9 +77,12 @@ class InkSkin {
     accentVermilion: Color(0xFFDC2626),
     accentSeal: Color(0xFF991B1B),
     goldLeaf: DesignTokens.goldLeaf,
+    requiresUnlock: true,
+    unlockWords: ['火', '朱', '印'],
   );
 
-  /// 「魔法墨水」—— 锁定皮肤，解锁后启用渐变笔触（§8.3）。
+  /// 「魔法墨水」—— 词语解锁：星 / 梦 / 流光（另认旧 `magicInk` 旗标，OR）。
+  /// 解锁后启用渐变笔触（§8.3）。
   static const magicFlow = InkSkin(
     id: 'magic_flow',
     displayName: '魔法墨水',
@@ -87,6 +95,7 @@ class InkSkin {
     strokeEffect: InkStrokeEffect.gradient,
     requiresUnlock: true,
     gradientStroke: [Color(0xFF7C3AED), Color(0xFFC2410C)],
+    unlockWords: ['星', '梦', '流光'],
   );
 
   /// 内置墨水皮肤（含 1 套锁定演示）。

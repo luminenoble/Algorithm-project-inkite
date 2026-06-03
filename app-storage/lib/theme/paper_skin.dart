@@ -15,6 +15,7 @@ class PaperSkin {
     required this.paperHighlight,
     required this.surfaceCard,
     this.textureAsset,
+    this.unlockWords,
     Color? foldLightTint,
   }) : foldLightTint = foldLightTint ?? paperHighlight;
 
@@ -32,6 +33,10 @@ class PaperSkin {
   /// 纸纹贴图资源（可空 = 纯色）。本版默认无纹理，留资源 seam。
   final String? textureAsset;
 
+  /// 解锁绑定的三个官方词语（null/空 = 免费）。
+  /// 用户已发布的故事 `words` 命中这三词即解锁（见 `data/unlock_state.dart`）。
+  final List<String>? unlockWords;
+
   /// 折叠转场折痕受光着色（默认取 [paperHighlight]）。
   final Color foldLightTint;
 
@@ -45,7 +50,7 @@ class PaperSkin {
     surfaceCard: DesignTokens.surfaceCard,
   );
 
-  /// 预置「牛皮纸」—— 用于演示皮肤切换链路（§8.1 示例）。
+  /// 预置「牛皮纸」—— 词语解锁：秋 / 霜 / 信笺。
   static const kraft = PaperSkin(
     id: 'kraft',
     displayName: '牛皮纸',
@@ -53,8 +58,20 @@ class PaperSkin {
     paperShade: Color(0xFFC4AD82),
     paperHighlight: Color(0xFFEBDCC1),
     surfaceCard: Color(0xFFE4D4B6),
+    unlockWords: ['秋', '霜', '信笺'],
   );
 
-  /// 内置可选纸张皮肤（首版仅默认必需，其余为切换演示）。
-  static const presets = <PaperSkin>[xuanDefault, kraft];
+  /// 预置「雪浪笺」—— 冷调宣纸，词语解锁：雪 / 梅 / 夜。
+  static const snow = PaperSkin(
+    id: 'snow',
+    displayName: '雪浪笺',
+    paperBase: Color(0xFFEFF3F6),
+    paperShade: Color(0xFFD2DBE2),
+    paperHighlight: Color(0xFFFAFCFE),
+    surfaceCard: Color(0xFFE7EDF2),
+    unlockWords: ['雪', '梅', '夜'],
+  );
+
+  /// 内置可选纸张皮肤（默认免费 + 词语解锁项）。
+  static const presets = <PaperSkin>[xuanDefault, kraft, snow];
 }
