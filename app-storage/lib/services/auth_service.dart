@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -32,9 +34,17 @@ class AuthService {
   // 登录路径
   // ---------------------------------------------------------------
 
+  // Firebase C++ SDK 12.x 在 Windows release 模式下偶发平台回调不返回，
+  // 加超时使 Future 失败而非永久挂起，方便上层显示错误而非无限转圈。
+  static const _kAuthTimeout = Duration(seconds: 15);
+  static const _kFirestoreTimeout = Duration(seconds: 10);
+
   Future<UserCredential> signInAnonymously() async {
-    final cred = await _auth.signInAnonymously();
-    await _ensureProfile(cred.user!, displayNameHint: null);
+    final cred = await _auth
+        .signInAnonymously()
+        .timeout(_kAuthTimeout);
+    await _ensureProfile(cred.user!, displayNameHint: null)
+        .timeout(_kFirestoreTimeout);
     return cred;
   }
 
@@ -42,12 +52,12 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final cred = await _auth.signInWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
+    final cred = await _auth
+        .signInWithEmailAndPassword(email: email.trim(), password: password)
+        .timeout(_kAuthTimeout);
     // 老用户首次在新设备登录也可能没档案（极端情况），兜底再确保一次。
-    await _ensureProfile(cred.user!, displayNameHint: null);
+    await _ensureProfile(cred.user!, displayNameHint: null)
+        .timeout(_kFirestoreTimeout);
     return cred;
   }
 
@@ -56,11 +66,11 @@ class AuthService {
     required String password,
     String? displayName,
   }) async {
-    final cred = await _auth.createUserWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
-    await _ensureProfile(cred.user!, displayNameHint: displayName);
+    final cred = await _auth
+        .createUserWithEmailAndPassword(email: email.trim(), password: password)
+        .timeout(_kAuthTimeout);
+    await _ensureProfile(cred.user!, displayNameHint: displayName)
+        .timeout(_kFirestoreTimeout);
     return cred;
   }
 

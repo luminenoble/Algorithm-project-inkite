@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -61,6 +63,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // 登录/注册成功后路由守卫会自动跳走，无需 context.go
     } on FirebaseAuthException catch (e) {
       setState(() => _error = _translateAuthError(e));
+    } on TimeoutException {
+      setState(() => _error = '网络超时，请检查连接后重试');
     } catch (e) {
       setState(() => _error = '失败：$e');
     } finally {
@@ -77,6 +81,8 @@ class _LoginScreenState extends State<LoginScreen> {
       await AuthService.instance.signInAnonymously();
     } on FirebaseAuthException catch (e) {
       setState(() => _error = _translateAuthError(e));
+    } on TimeoutException {
+      setState(() => _error = '网络超时，请检查连接后重试');
     } catch (e) {
       setState(() => _error = '失败：$e');
     } finally {
