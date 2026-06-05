@@ -26,6 +26,7 @@ GoogleService-Info.plist
 .firebase/
 service-account*.json
 serviceAccountKey*.json
+*adminsdk*.json
 
 # ===== Cloud Functions =====
 functions/node_modules/
