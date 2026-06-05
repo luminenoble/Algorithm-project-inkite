@@ -6,9 +6,9 @@
 
 ## 项目概要
 
-**Inkite** —— 融合创意写作与社区分享的应用。原计划 20 天、5 人团队的课程 demo，**因变故已转为单人 + AI 辅助**完成；目标不变，仍覆盖全部功能骨架，**最终以演示视频形式交付**（非现场操作）。剩余工期约 15 天（记为 R1–R15），后续唯一行动指引是 `docs/single-TODO.md`（替代原 P1 视角的 `docs/tmp/section1-TODO.md`）。
+**Inkite** —— 融合创意写作与社区分享的应用。原计划 20 天、5 人团队的课程 demo，**因变故已转为单人 + AI 辅助**完成；目标不变，仍覆盖全部功能骨架，**最终以演示视频形式交付**（非现场操作）。剩余工期约 15 天（记为 R1–R15），后续唯一行动指引是 `docs/single-TODO.md`。
 
-**交付形态**：**Windows 桌面应用为主**（同一份 Flutter 代码可编译为 Android APK 备用）。T1.3 已在 Windows 上跑通 `flutter run -d windows` 与匿名登录 + Firestore 探针。pivot 决策记录见 `docs/dependencies.md` 末尾「Windows 桌面实测环境与稳定跑法」附录。
+**交付形态**：**Windows 桌面应用为主**（同一份 Flutter 代码可编译为 Android APK 备用）。T1.3 已在 Windows 上跑通 `flutter run -d windows` 与匿名登录 + Firestore 探针。pivot 决策记录见 `docs/GUIDE/dependencies.md` 末尾「Windows 桌面实测环境与稳定跑法」附录。
 
 核心功能：
 
@@ -53,21 +53,30 @@
 ├── storage.rules                   # Cloud Storage 安全规则（T1.4，已部署线上）
 ├── firestore.indexes.json          # 复合索引声明（T1.4，T1.10a 待部署）
 ├── docs/
-│   ├── git-format.md               # 提交信息与分支命名规范（强制）
-│   ├── dependencies.md             # 本地工具链安装指引（含 Windows 实测附录）
 │   ├── single-TODO.md              # ★ 单人重排后唯一行动指引（T1.8 起后端 + P2/P3/P4 全前端）
-│   ├── fronted-design.md           # 前端视觉/交互/折纸动效设计规格（设计事实来源，不含代码）
-│   ├── P1/
-│   │   ├── stage0/                 # 阶段 0 子任务文档（T1.1–T1.4.md）
-│   │   └── stage1/                 # 阶段 1 子任务文档（T1.5–T1.7.md）
+│   ├── next-design.md              # 下阶段实现要求（故事书 / 章节等扩展）
+│   ├── GUIDE/                      # 操作类指引
+│   │   ├── git-format.md           # 提交信息与分支命名规范（强制）
+│   │   ├── dependencies.md         # 本地工具链安装指引（含 Windows 实测附录）
+│   │   ├── fronted-design.md       # 前端视觉/交互/折纸动效设计规格（设计事实来源，不含代码）
+│   │   └── 挑战发布.md             # 官方挑战发布脚本用法 + 复合索引刷新问题排查
 │   ├── schema-design/
 │   │   └── design.md               # Firestore 数据模型（D3 冻结后唯一事实来源）
-│   └── tmp/                        # 立项阶段 / 已归档资料
-│       ├── section1-TODO.md        # 原 P1 全程任务清单（已被 single-TODO.md 取代，存档）
-│       ├── 分工-初步.md
-│       └── Inkite_可行性与资金分析.md
-├── functions/                      # Cloud Functions 子工程（T1.7 已交付，未实地部署）
-│   ├── src/                        # index.ts / triggers.ts / hotScore.ts / recompute.ts
+│   ├── AI-feature/                 # AI 折纸特性设计（F1 per-challenge 图池 / F2 自由 AI 配额）
+│   │   ├── F1-per-challenge-pool.md
+│   │   └── F2-free-ai-quota.md
+│   ├── fronted/                    # 前端实现计划（总 plan / 解锁展馆）
+│   │   ├── plan.md
+│   │   └── unlock-halls.plan.md
+│   ├── P1/                         # 后端任务记录
+│   │   ├── stage0/                 # T1.1–T1.4
+│   │   └── stage1/                 # T1.5–T1.8（含 T1.8a/b/c、T1.8-manual-ops）
+│   ├── P2/                         # 写作模块任务（T2.1–T2.4）
+│   ├── P3/                         # 社区模块任务（T3.1–T3.5）
+│   └── P4/                         # 游戏化模块任务（T4.1–T4.4）
+├── functions/                      # Cloud Functions 子工程（代码已交付，演示前才 deploy）
+│   ├── src/                        # index/triggers/hotScore/recompute/userStats/aiQuota/generateOrigami/generateAiOrigami
+│   ├── scripts/                    # seed_challenge.mjs（官方挑战发布）/ replicate-probe.mjs
 │   ├── package.json
 │   └── tsconfig.json
 └── app-storage/                    # Flutter 工程根目录（T1.3 初始化）
@@ -113,7 +122,7 @@ app-storage/
 - `./firebase.json`（仓库根）：**Firebase CLI** 用，声明 `firestore.rules` / `storage.rules` / `firestore.indexes.json` / `functions/` 路径与 Emulator 端口
 - `app-storage/firebase.json`：**FlutterFire CLI** 用，存储已配置的平台元数据（android / windows 的 appId 等），不要手工编辑
 
-Firebase 后端配置文件（仓库根，T1.4 起补齐，已在上方目录树标注）：`firestore.rules`、`storage.rules`、`firestore.indexes.json` 均已存在；`functions/src/` 下已有 `index.ts`（导出汇总）、`triggers.ts`（onStoryCreated / onLike* 等触发器）、`hotScore.ts`（热度算法）、`recompute.ts`（`recomputeHotScores` Callable）。T1.8 将新增 `generateOrigami.ts`（折纸生成，预生成池 + Replicate 备用）。
+Firebase 后端配置文件（仓库根，T1.4 起补齐，已在上方目录树标注）：`firestore.rules`、`storage.rules`、`firestore.indexes.json` 均已存在；`functions/src/` 下已有 `index.ts`（导出汇总）、`triggers.ts`（onStoryCreated / onLike* 等触发器）、`hotScore.ts`（热度算法）、`recompute.ts`（`recomputeHotScores` Callable）、`userStats.ts`（user 派生字段）、`aiQuota.ts`（F2 自由 AI 周配额）、`generateOrigami.ts`（官方挑战折纸生成，预生成池 + Replicate 备用）、`generateAiOrigami.ts`（F2 自由 AI 折纸）。挑战发布脚本见 `functions/scripts/seed_challenge.mjs`（用法 `docs/GUIDE/挑战发布.md`）。
 
 ---
 
@@ -121,7 +130,7 @@ Firebase 后端配置文件（仓库根，T1.4 起补齐，已在上方目录树
 
 ### 1. 提交规范
 
-**严格遵循 `docs/git-format.md`**。要点：
+**严格遵循 `docs/GUIDE/git-format.md`**。要点：
 
 - 格式：`<type>[(<scope>)]: <subject>`
 - `type` 限定：`feat` / `fix` / `docs` / `style` / `refactor` / `test` / `revert` / `build`
@@ -148,7 +157,7 @@ Firebase 后端配置文件（仓库根，T1.4 起补齐，已在上方目录树
 
 - 涉及破坏性 git 操作（`reset --hard` / `push --force` / 删除分支等）须先与用户确认。
 - 范围之内：只做要求的事，不顺手做"周边重构"。
-- 修改 schema 前必先读 `docs/schema-design/design.md`；修改任务执行细节前必先读 `docs/single-TODO.md`（已取代 `docs/tmp/section1-TODO.md`）；动前端视觉 / 交互 / 动效前必先读 `docs/fronted-design.md`（设计事实来源）。
+- 修改 schema 前必先读 `docs/schema-design/design.md`；修改任务执行细节前必先读 `docs/single-TODO.md`；动前端视觉 / 交互 / 动效前必先读 `docs/GUIDE/fronted-design.md`（设计事实来源）。
 
 ### 5. 当前阶段定位
 
@@ -192,7 +201,7 @@ Firebase 后端配置文件（仓库根，T1.4 起补齐，已在上方目录树
 - **副平台**：Android（同代码可跑，留作 D17–D19 加分项）。`flutterfire configure` 已同时配好 android + windows 两套 `firebase_options.dart`。
 - **不支持**：iOS / macOS / Linux / Web（demo 范围内不投入）。`firebase_auth` 当前选用方法（**匿名 + 邮箱/密码**）在 Windows 上经 REST 通道工作正常；OAuth 第三方登录不在计划内。
 - **客户端不直接调 `firebase_storage`**：折纸图片由 Cloud Function 生成并写 Storage，客户端只通过 Firestore 拿到 `imageUrl` 用 `Image.network` 显示。避开 Windows 上 `firebase_storage` 支持有限的问题。
-- **Windows 构建踩坑全集**：见 `docs/dependencies.md` 末尾「Windows 桌面实测环境与稳定跑法」附录（VS 2026 + Flutter 3.44 + Firebase C++ SDK 兼容性、Defender 拖慢、CMake 版本拒绝、INSTALL 权限、MSVC 运行库匹配 5 个治本点）。后续任何"Windows 跑不起来"问题先按附录排查。
+- **Windows 构建踩坑全集**：见 `docs/GUIDE/dependencies.md` 末尾「Windows 桌面实测环境与稳定跑法」附录（VS 2026 + Flutter 3.44 + Firebase C++ SDK 兼容性、Defender 拖慢、CMake 版本拒绝、INSTALL 权限、MSVC 运行库匹配 5 个治本点）。后续任何"Windows 跑不起来"问题先按附录排查。
 
 ---
 
@@ -200,12 +209,13 @@ Firebase 后端配置文件（仓库根，T1.4 起补齐，已在上方目录树
 
 | 主题 | 文件 |
 |------|------|
-| 提交规范 | `docs/git-format.md` |
+| 提交规范 | `docs/GUIDE/git-format.md` |
 | **后续行动指引（唯一）** | `docs/single-TODO.md` |
-| **前端设计规格** | `docs/fronted-design.md` |
+| **前端设计规格** | `docs/GUIDE/fronted-design.md` |
 | 数据模型 | `docs/schema-design/design.md` |
-| 工具链 / Windows 实测附录 | `docs/dependencies.md` |
-| 原 P1 任务清单（存档） | `docs/tmp/section1-TODO.md` |
-| 团队分工（原始） | `docs/tmp/分工-初步.md` |
-| 可行性与预算 | `docs/tmp/Inkite_可行性与资金分析.md` |
+| 工具链 / Windows 实测附录 | `docs/GUIDE/dependencies.md` |
+| 挑战发布脚本 | `docs/GUIDE/挑战发布.md` |
+| AI 折纸特性（F1/F2） | `docs/AI-feature/` |
+| 前端实现计划 | `docs/fronted/` |
+| 下阶段设计 | `docs/next-design.md` |
 | 项目简介 | `README.md` |
