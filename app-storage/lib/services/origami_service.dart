@@ -1,93 +1,13 @@
-import 'dart:convert';
+import 'functions_client.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
+// CallableException 现住在 functions_client.dart；re-export 保持既有
+// `import '.../origami_service.dart'` 的调用方（如 ai_origami_card.dart）不破坏。
+export 'functions_client.dart' show CallableException;
 
-/// Callable Cloud Functions 客户端（HTTPS 直调实现）。
-///
-/// 不走 `cloud_functions` 包——它在 Windows 桌面上没有原生 pigeon handler
-/// (CLAUDE.md §7 同款 firebase_storage 不直连的策略)。
-/// 改用 Firebase Auth ID token + http POST 直接命中 v2 onCall 端点：
-///
-/// ```
-/// POST https://<region>-<project>.cloudfunctions.net/<name>
-/// Authorization: Bearer <id-token>
-/// Content-Type: application/json
-/// Body: {"data": <args>}
-/// ```
-///
-/// 成功 → 200 + `{"result": ...}`；失败 → 非 2xx + `{"error": {"status","message"}}`。
-/// gRPC status 字符串转 callable 风格小写 dash code，对齐之前 cloud_functions 包的语义。
+/// 折纸发放相关的 Callable 封装。底层 HTTPS 直调走 [FunctionsClient]。
 class OrigamiService {
   OrigamiService._();
   static final OrigamiService instance = OrigamiService._();
-
-  static const String _region = 'asia-east1';
-  static const String _projectId = 'inkite-demo';
-
-  String _functionUrl(String name) =>
-      'https://$_region-$_projectId.cloudfunctions.net/$name';
-
-  Future<Map<String, dynamic>> _call(
-    String name,
-    Map<String, dynamic> data,
-  ) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw const CallableException('unauthenticated', '请先登录');
-    }
-    final idToken = await user.getIdToken();
-    if (idToken == null || idToken.isEmpty) {
-      throw const CallableException('unauthenticated', '无法获取登录凭证');
-    }
-
-    final http.Response res;
-    try {
-      res = await http.post(
-        Uri.parse(_functionUrl(name)),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $idToken',
-        },
-        body: jsonEncode({'data': data}),
-      );
-    } catch (e) {
-      throw CallableException('unavailable', '网络错误：$e');
-    }
-
-    Map<String, dynamic> body;
-    try {
-      body = jsonDecode(res.body) as Map<String, dynamic>;
-    } catch (_) {
-      final preview =
-          res.body.length > 200 ? '${res.body.substring(0, 200)}…' : res.body;
-      throw CallableException(
-        'internal',
-        'HTTP ${res.statusCode} 响应非 JSON：$preview',
-      );
-    }
-
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      final result = body['result'];
-      if (result is Map) return Map<String, dynamic>.from(result);
-      throw const CallableException('internal', '响应缺少 result 字段');
-    }
-
-    final err = body['error'];
-    if (err is Map) {
-      final status = (err['status'] as String?) ?? 'UNKNOWN';
-      final message =
-          (err['message'] as String?) ?? 'HTTP ${res.statusCode}';
-      throw CallableException(_statusToCode(status), message);
-    }
-    throw CallableException('internal', 'HTTP ${res.statusCode}');
-  }
-
-  /// gRPC 风格的 SCREAMING_SNAKE → callable lower-dash 风格。
-  /// 例：`FAILED_PRECONDITION` → `failed-precondition`。
-  static String _statusToCode(String status) {
-    return status.toLowerCase().replaceAll('_', '-');
-  }
 
   /// 触发**官方挑战**折纸发放（对应 `generateOrigami` Callable）。
   ///
@@ -99,7 +19,7 @@ class OrigamiService {
     String? style,
     bool live = false,
   }) async {
-    final data = await _call('generateOrigami', {
+    final data = await FunctionsClient.instance.call('generateOrigami', {
       'challengeId': challengeId,
       'style': ?style,
       if (live) 'live': true,
@@ -112,7 +32,7 @@ class OrigamiService {
     );
   }
 
-  /// F2：**自由 AI** 折纸生成（对应 `generateAiOrigami` Callable）。
+  /// F2:**自由 AI** 折纸生成（对应 `generateAiOrigami` Callable）。
   /// 用户必须传入恰好 3 个非空关键词；这些词会织进 Replicate prompt，
   /// 并随 origami 文档落库（`origami.words`）。周配额由 CF 维护。
   ///
@@ -126,7 +46,7 @@ class OrigamiService {
   Future<AiOrigamiResult> generateAiFree({
     required List<String> words,
   }) async {
-    final data = await _call('generateAiOrigami', {
+    final data = await FunctionsClient.instance.call('generateAiOrigami', {
       'words': words,
     });
     final quota = Map<String, dynamic>.from(data['quota'] as Map);
@@ -145,21 +65,6 @@ class OrigamiService {
   }
 }
 
-/// Callable 调用失败的统一异常类型。
-///
-/// `code` 对齐 v2 onCall 的 gRPC status 小写 dash 形式：
-/// `unauthenticated` / `invalid-argument` / `failed-precondition` /
-/// `resource-exhausted` / `internal` / `unavailable` / 其他。
-class CallableException implements Exception {
-  const CallableException(this.code, this.message);
-
-  final String code;
-  final String message;
-
-  @override
-  String toString() => 'CallableException($code): $message';
-}
-
 class OrigamiResult {
   const OrigamiResult({
     required this.origamiId,
@@ -174,7 +79,7 @@ class OrigamiResult {
   final String source;
 }
 
-/// F2：自由 AI 折纸生成结果（含本次调用后的配额快照）。
+/// F2:自由 AI 折纸生成结果（含本次调用后的配额快照）。
 /// 不带 `style`——自由 AI 折纸已不再做 zen/steampunk/ink 分类。
 class AiOrigamiResult {
   const AiOrigamiResult({

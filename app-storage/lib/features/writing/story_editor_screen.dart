@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/models/story.dart';
+import '../../data/models/storybook.dart';
 import '../../data/repositories/story_repository.dart';
+import '../../data/repositories/storybook_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../services/auth_service.dart';
 import '../../services/origami_service.dart';
@@ -23,6 +25,10 @@ import '../common/magic_ink.dart';
 ///
 /// **编辑模式：**
 /// - `storyId`: 既有故事 ID → 拉取并预填，提交走 `update`
+///
+/// **故事书归属（T6，所有模式可选）：**
+/// - `storybookId` / `chapterName`: 新故事直接落入指定故事书/章节；缺省落默认书。
+/// - `fromStorybook`: 从某故事书内部屏进来；保存/返回时回到该屏。
 class StoryEditorScreen extends StatefulWidget {
   const StoryEditorScreen({super.key, this.extra});
 
@@ -42,6 +48,15 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
   List<String>? _words;
   List<String>? _inspirationWords;
   String? _editingStoryId;
+
+  /// T6：故事所属故事书 / 章节。新建时由 extra 指定或落默认书（_submit 内补齐）；
+  /// 编辑时从既有 story 读出。保存后用于 `StorybookRepository.touch`。
+  String? _storybookId;
+  String? _chapterName;
+
+  /// 从某故事书内部屏进入时记下，保存/返回时回到该屏。
+  String? _returnStorybookId;
+
   bool _loading = false;
   bool _submitting = false;
 
@@ -52,6 +67,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     super.initState();
     final extra = widget.extra ?? {};
     _editingStoryId = extra['storyId'] as String?;
+    _returnStorybookId = extra['fromStorybook'] as String?;
 
     if (_isEditMode) {
       _mode = StoryMode.free;
@@ -62,6 +78,8 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
       _challengeId = extra['challengeId'] as String?;
       _words = (extra['words'] as List?)?.cast<String>();
       _inspirationWords = (extra['inspirationWords'] as List?)?.cast<String>();
+      _storybookId = extra['storybookId'] as String?;
+      _chapterName = extra['chapterName'] as String?;
     }
   }
 
@@ -73,7 +91,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('故事不存在或已删除')),
         );
-        context.go('/writing/mine');
+        context.go(_destination());
         return;
       }
       setState(() {
@@ -82,6 +100,8 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
         _mode = story.mode;
         _challengeId = story.challengeId;
         _words = story.words;
+        _storybookId = story.storybookId;
+        _chapterName = story.chapterName;
         _loading = false;
       });
     } catch (e) {
@@ -136,6 +156,14 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
         final profile = await UserRepository.instance.getProfile(uid);
         final authorName = profile?.displayName ?? '';
 
+        // 未指定故事书 → 落该用户默认书（惰性创建，§3.2 调用约定）。
+        if (_storybookId == null || _storybookId!.isEmpty) {
+          final defaultBook =
+              await StorybookRepository.instance.getOrCreateDefault(uid);
+          _storybookId = defaultBook.id;
+        }
+        _chapterName ??= kDefaultChapter;
+
         final story = Story(
           id: '',
           authorId: uid,
@@ -148,6 +176,8 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
           visibility:
               publish ? StoryVisibility.public : StoryVisibility.private,
           publishedToSquare: publish,
+          storybookId: _storybookId!,
+          chapterName: _chapterName!,
           likeCount: 0,
           commentCount: 0,
           hotScore: 0,
@@ -156,6 +186,13 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
         );
 
         await StoryRepository.instance.create(story);
+      }
+
+      // 刷新故事书 updatedAt，让总览「修改时间排序」准确（§3.2 调用约定）。
+      final touchId = _storybookId;
+      if (touchId != null && touchId.isNotEmpty) {
+        // ignore: discarded_futures
+        StorybookRepository.instance.touch(touchId);
       }
 
       // T4.2：官方挑战发布成功 → fire-and-forget 调 generateOrigami。
@@ -188,7 +225,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
           ),
         ),
       );
-      context.go(_isEditMode ? '/writing/mine' : '/writing');
+      context.go(_destination());
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -199,9 +236,19 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     }
   }
 
+  /// 返回 / 保存后的去向：
+  /// - 从某故事书内部屏进来 → 回该屏；
+  /// - 编辑既有故事 → 回故事书总览；
+  /// - 落地页新建 → 回写作落地页。
+  String _destination() {
+    final from = _returnStorybookId;
+    if (from != null && from.isNotEmpty) return '/writing/storybooks/$from';
+    return _isEditMode ? '/writing/storybooks' : '/writing';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final backRoute = _isEditMode ? '/writing/mine' : '/writing';
+    final backRoute = _destination();
     final title = _isEditMode
         ? '编辑故事'
         : (_mode == StoryMode.official ? '官方挑战' : '自由创作');

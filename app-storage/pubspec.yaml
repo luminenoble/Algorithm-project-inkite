@@ -40,8 +40,12 @@ dependencies:
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.4
   # 不用 cloud_functions：该插件在 Windows 上没有原生 pigeon handler，
-  # 改走 HTTPS 直调 v2 onCall（见 services/origami_service.dart）
+  # 改走 HTTPS 直调 v2 onCall（见 services/functions_client.dart）
   http: ^1.2.0
+
+  # 故事书自定义封面：本地选图（Windows 桌面经 file_selector_windows 支持）。
+  # 读 bytes 后经 uploadStorybookCover CF 中转写 Storage（不直连 Storage）。
+  file_selector: ^1.0.3
 
   # Routing
   go_router: ^14.6.0

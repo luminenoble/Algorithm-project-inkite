@@ -13,6 +13,8 @@ import '../features/writing/challenge_stories_screen.dart';
 import '../features/writing/my_stories_screen.dart';
 import '../features/writing/random_words_screen.dart';
 import '../features/writing/story_editor_screen.dart';
+import '../features/writing/storybook_detail_screen.dart';
+import '../features/writing/storybooks_overview_screen.dart';
 import '../features/writing/writing_screen.dart';
 import '../services/auth_service.dart';
 import 'fold_transition.dart';
@@ -71,6 +73,24 @@ final appRouter = GoRouter(
               path: 'mine',
               pageBuilder: (_, state) => foldPage(state, const MyStoriesScreen(),
                   direction: FoldDirection.forward),
+            ),
+            // T6：故事书总览（「我的故事」主入口）+ 故事书内部章节文件树。
+            GoRoute(
+              path: 'storybooks',
+              pageBuilder: (_, state) => foldPage(
+                  state, const StorybooksOverviewScreen(),
+                  direction: FoldDirection.forward),
+              routes: [
+                GoRoute(
+                  path: ':storybookId',
+                  pageBuilder: (_, state) => foldPage(
+                    state,
+                    StorybookDetailScreen(
+                        storybookId: state.pathParameters['storybookId']!),
+                    direction: FoldDirection.forward,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

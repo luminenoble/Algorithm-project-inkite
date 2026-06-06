@@ -256,7 +256,7 @@ class _MyStoriesCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.go('/writing/mine'),
+        onTap: () => context.go('/writing/storybooks'),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Row(

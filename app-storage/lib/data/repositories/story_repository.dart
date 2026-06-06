@@ -24,18 +24,26 @@ class StoryRepository {
   }
 
   /// 局部更新；只允许列出的字段，避免误写 CF-only 计数。
+  ///
+  /// [storybookId] / [chapterName] 用于把故事移动到别的书/章节（T6，§3.2）；
+  /// 不传则保持原归属。移动后调用方需 `StorybookRepository.touch` 刷新两端
+  /// `updatedAt`（让「修改时间排序」准确）。
   Future<void> update(
     String storyId, {
     String? title,
     String? body,
     StoryVisibility? visibility,
     bool? publishedToSquare,
+    String? storybookId,
+    String? chapterName,
   }) {
     final patch = <String, dynamic>{
       'title': ?title,
       'body': ?body,
       'visibility': ?visibility?.name,
       'publishedToSquare': ?publishedToSquare,
+      'storybookId': ?storybookId,
+      'chapterName': ?chapterName,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     return _col.doc(storyId).update(patch);
@@ -85,6 +93,24 @@ class StoryRepository {
     return _col
         .where('authorId', isEqualTo: uid)
         .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((qs) =>
+            qs.docs.map(Story.fromFirestore).toList(growable: false));
+  }
+
+  /// 「故事书内按章节聚合」列表（T6，§3.2）。需要
+  /// `storybookId ASC + chapterName ASC + createdAt ASC` 复合索引
+  /// （`firestore.indexes.json` 已声明）。拉到该书全部 story，
+  /// 由调用方在客户端按 `chapterName` 分组。
+  Stream<List<Story>> streamByStorybook(
+    String storybookId, {
+    int limit = 200,
+  }) {
+    return _col
+        .where('storybookId', isEqualTo: storybookId)
+        .orderBy('chapterName')
+        .orderBy('createdAt')
         .limit(limit)
         .snapshots()
         .map((qs) =>

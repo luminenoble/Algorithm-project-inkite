@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'storybook.dart' show kDefaultChapter;
+
 enum StoryMode { official, free, diary, essay, fanfic }
 
 enum StoryVisibility { private, public }
@@ -25,6 +27,8 @@ class Story {
     required this.words,
     required this.visibility,
     required this.publishedToSquare,
+    required this.storybookId,
+    required this.chapterName,
     required this.likeCount,
     required this.commentCount,
     required this.hotScore,
@@ -42,6 +46,13 @@ class Story {
   final List<String>? words;
   final StoryVisibility visibility;
   final bool publishedToSquare;
+
+  /// 所属故事书文档 ID（T6）。创建时由写作流补默认书 ID（非空）。
+  final String storybookId;
+
+  /// 所属章节名（T6）。未指定时为 [kDefaultChapter]（非空）。
+  final String chapterName;
+
   final int likeCount;
   final int commentCount;
   final num hotScore;
@@ -63,6 +74,9 @@ class Story {
           .toList(growable: false),
       visibility: _parseVisibility(data['visibility']),
       publishedToSquare: (data['publishedToSquare'] as bool?) ?? false,
+      // 迁移前旧 story 无此两字段 → 防御性默认，保证渲染不崩（§1.1）。
+      storybookId: (data['storybookId'] as String?) ?? '',
+      chapterName: (data['chapterName'] as String?) ?? kDefaultChapter,
       likeCount: (data['likeCount'] as num?)?.toInt() ?? 0,
       commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
       hotScore: (data['hotScore'] as num?) ?? 0,
@@ -84,6 +98,9 @@ class Story {
       if (words != null) 'words': words,
       'visibility': visibility.name,
       'publishedToSquare': publishedToSquare,
+      // 两字段非空必带（调用方在 create 前已补默认书/章节，§3.2 调用约定）。
+      'storybookId': storybookId,
+      'chapterName': chapterName,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
