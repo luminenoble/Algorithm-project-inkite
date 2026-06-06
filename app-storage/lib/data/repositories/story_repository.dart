@@ -100,14 +100,20 @@ class StoryRepository {
   }
 
   /// 「故事书内按章节聚合」列表（T6，§3.2）。需要
-  /// `storybookId ASC + chapterName ASC + createdAt ASC` 复合索引
-  /// （`firestore.indexes.json` 已声明）。拉到该书全部 story，
+  /// `authorId ASC + storybookId ASC + chapterName ASC + createdAt ASC`
+  /// 复合索引（`firestore.indexes.json` 已声明）。拉到该书全部 story，
   /// 由调用方在客户端按 `chapterName` 分组。
+  ///
+  /// 必须带 [authorId] 过滤：故事书为 owner 私有，stories 读规则要求
+  /// 查询能静态证明命中 `authorId == uid`，否则整条 list query 会被
+  /// 安全规则拒绝（permission-denied，与索引无关）。
   Stream<List<Story>> streamByStorybook(
     String storybookId, {
+    required String authorId,
     int limit = 200,
   }) {
     return _col
+        .where('authorId', isEqualTo: authorId)
         .where('storybookId', isEqualTo: storybookId)
         .orderBy('chapterName')
         .orderBy('createdAt')

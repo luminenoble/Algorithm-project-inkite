@@ -5,6 +5,7 @@ import '../../data/models/story.dart';
 import '../../data/models/storybook.dart';
 import '../../data/repositories/storybook_repository.dart';
 import '../../data/repositories/story_repository.dart';
+import '../../services/auth_service.dart';
 import '../../theme/motion.dart';
 import '../../theme/skin_controller.dart';
 import '../../widgets/brush_loading.dart';
@@ -32,6 +33,7 @@ class _StorybookDetailScreenState extends State<StorybookDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final uid = AuthService.instance.currentUid;
     return StreamBuilder<Storybook?>(
       stream:
           StorybookRepository.instance.watchById(widget.storybookId),
@@ -60,8 +62,10 @@ class _StorybookDetailScreenState extends State<StorybookDetailScreen> {
             label: const Text('写故事'),
           ),
           body: StreamBuilder<List<Story>>(
-            stream: StoryRepository.instance
-                .streamByStorybook(widget.storybookId),
+            stream: uid == null
+                ? const Stream<List<Story>>.empty()
+                : StoryRepository.instance
+                    .streamByStorybook(widget.storybookId, authorId: uid),
             builder: (context, storySnap) {
               if (storySnap.hasError) {
                 return _IndexHint(error: storySnap.error!);

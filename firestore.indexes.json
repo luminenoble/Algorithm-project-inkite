@@ -45,6 +45,7 @@
       "collectionGroup": "stories",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "authorId", "order": "ASCENDING" },
         { "fieldPath": "storybookId", "order": "ASCENDING" },
         { "fieldPath": "chapterName", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
