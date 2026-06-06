@@ -27,6 +27,7 @@
 | `stories/{storyId}` | P2 / P3 | 故事正文及冗余计数 |
 | `stories/{storyId}/comments/{commentId}` | P3 | 故事评论（子集合） |
 | `stories/{storyId}/likes/{uid}` | P3 | 点赞记录（uid 为文档 ID） |
+| `storybooks/{storybookId}` | P2 | T6：故事书元数据（封面 / pin / 章节顺序），章节不单独建集合 |
 | `origami/{origamiId}` | P4 | AI 折纸藏品实例 |
 | `charactersCache/{characterKey}` | 模块 G | 角色查询缓存（Wikipedia + Reddit） |
 
@@ -90,6 +91,8 @@
 | `words` | array&lt;string&gt; \| null | 否 | Client | 写作时用到的三词快照（防挑战被修改后语义丢失） |
 | `visibility` | string | 是 | Client | 枚举：`private` / `public` |
 | `publishedToSquare` | bool | 是 | Client | 是否已发布到广场 |
+| `storybookId` | string | 是 | Client | T6：所属故事书文档 ID。未指定时写入该用户默认书 ID（`default_{uid}`） |
+| `chapterName` | string | 是 | Client | T6：所属章节名。未指定时写入常量 `未分章`（DEFAULT_CHAPTER） |
 | `likeCount` | int | 是 | CF | 冗余计数；前端禁写 |
 | `commentCount` | int | 是 | CF | 冗余计数；前端禁写 |
 | `hotScore` | number | 是 | CF | 排行榜权重；公式：`likeCount*2 + commentCount + 时间衰减` |
@@ -165,6 +168,29 @@ AI 折纸藏品实例。每完成一次官方挑战由 Cloud Function `generateO
 
 ---
 
+## 8. `storybooks/{storybookId}`（T6）
+
+故事书元数据。文档 ID 自动生成；默认书用确定性 ID `default_{uid}` 便于惰性创建幂等。
+「章节」不单独建集合，仅作 story 上的 `chapterName` 字符串 + 本文档的 `chapterOrder` 顺序数组。
+
+| 字段 | 类型 | 必填 | 维护方 | 说明 |
+|------|------|------|--------|------|
+| `ownerId` | string (uid) | 是 | Client | 拥有者 uid。安全规则据此限制读写 |
+| `title` | string | 是 | Client | 书名。默认书固定 `未分类` |
+| `coverUrl` | string \| null | 否 | CF | 封面图 URL（`uploadStorybookCover` 上传后回写）；为空时前端回落内置预设。**前端禁写** |
+| `coverAssetId` | string \| null | 否 | Client | 选用的内置预设封面 ID；与 `coverUrl` 互斥，`coverUrl` 优先 |
+| `chapterOrder` | array&lt;string&gt; | 否 | Client | 章节展示顺序（章节名数组）；缺省按 story 的 `createdAt` 推断 |
+| `isDefault` | bool | 是 | Client | 是否默认「未分类」书。默认书禁删、禁改名（可换封面、可 pin） |
+| `pinned` | bool | 是 | Client | 是否置顶。总览中 pinned 优先排前 |
+| `createdAt` | timestamp | 是 | Client | `serverTimestamp()` |
+| `updatedAt` | timestamp | 是 | Client | 书名/封面/章节顺序/下属 story 增删变更时更新；用于「修改时间排序」 |
+
+**说明**
+- `coverUrl` 由 Cloud Function 经 Admin SDK 写入，安全规则禁止前端 update 任何含 `coverUrl` 的变更。
+- `storyCount` 列为可选 CF 字段：首版不接触发器，前端用 `streamByStorybook` 长度兜底（详见 `docs/next-design-detailed.md` §1.2）。
+
+---
+
 ## 索引（`firestore.indexes.json`）
 
 D3 暂可空，D17 前由 T1.10 补齐。已知必需的复合索引：
@@ -172,13 +198,17 @@ D3 暂可空，D17 前由 T1.10 补齐。已知必需的复合索引：
 - `stories`：`visibility ASC` + `hotScore DESC`（广场排行榜）
 - `stories`：`authorId ASC` + `createdAt DESC`（"我的故事"列表）
 - `stories`：`mode ASC` + `challengeId ASC` + `createdAt DESC`（按挑战聚合故事）
+- `stories`：`storybookId ASC` + `chapterName ASC` + `createdAt ASC`（T6：故事书内按章节聚合）
+- `storybooks`：`ownerId ASC` + `pinned DESC` + `updatedAt DESC`（T6：总览 · 置顶优先 + 修改时间排序）
+- `storybooks`：`ownerId ASC` + `pinned DESC` + `createdAt DESC`（T6：总览 · 置顶优先 + 创建时间排序）
 
 ---
 
 ## 安全规则要点（对接 T1.4 / T1.10）
 
 - `users/{uid}`：仅本人可写自己文档；`stats.*` / `unlocks.*` 仅 CF 可写。
-- `stories/{storyId}`：作者可写自己；`visibility = public` 时任何已登录用户可读；`likeCount` / `commentCount` / `hotScore` 仅 CF 可写。
+- `stories/{storyId}`：作者可写自己；`visibility = public` 时任何已登录用户可读；`likeCount` / `commentCount` / `hotScore` 仅 CF 可写。T6：写入的 `storybookId` 须指向本人故事书（规则 `get()` 校验 ownerId）；`chapterName` 为非空 string。
+- `storybooks/{storybookId}`（T6）：仅 owner 可读写；`coverUrl` 仅 CF（Admin SDK）可写，前端任何含 `coverUrl` 的 update 一律拒；默认书（`isDefault==true`）禁改名、禁删。`storage` 侧 `storybook-covers/**` 前端禁写、`read:true`。
 - `stories/{storyId}/comments/{commentId}`：已登录可创建（authorId 必须等于 `request.auth.uid`），作者可删自己评论。
 - `stories/{storyId}/likes/{uid}`：仅本人可创建/删除自己 uid 文档。
 - `origami/{origamiId}`：所有人可读，前端禁写（仅 CF）。
@@ -190,7 +220,7 @@ D3 暂可空，D17 前由 T1.10 补齐。已知必需的复合索引：
 
 | 模块 | 数据需求 | 覆盖集合 |
 |------|----------|----------|
-| P2 写作 | 故事、官方挑战、自由词 | `stories`、`challenges`（自由词不入库） |
+| P2 写作 | 故事、官方挑战、自由词、故事书/章节 | `stories`、`challenges`（自由词不入库）、`storybooks`（T6） |
 | P3 社区 | 广场动态、点赞、评论、排行榜 | `stories` + `comments` + `likes`（含 hotScore） |
 | P4 游戏化 | 折纸藏品、解锁状态、主题房间 | `origami` + `users.unlocks` |
 | 模块 G | 角色查询缓存 | `charactersCache` |
