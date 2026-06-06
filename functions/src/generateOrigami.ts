@@ -4,6 +4,7 @@ import { defineSecret } from "firebase-functions/params";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { v3 } from "@google-cloud/translate";
+import { firebaseDownloadUrl } from "./storageUrl";
 
 /**
  * 默认风格枚举（决定 `pickStyleByHash` 落点 + 默认 prompt 字典 key）。
@@ -384,17 +385,4 @@ export async function translateToEnglish(words: string[]): Promise<string[]> {
     logger.warn(`[translate] 失败，回退原始关键词: ${e}`);
     return words;
   }
-}
-
-/**
- * Firebase Storage 免 token 下载 URL。
- * 仅当 storage.rules 的对应路径允许 read:true 时该 URL 可公开访问。
- */
-function firebaseDownloadUrl(
-  bucketName: string,
-  objectName: string,
-): string {
-  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(
-    objectName,
-  )}?alt=media`;
 }
