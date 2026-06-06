@@ -41,6 +41,24 @@ service cloud.firestore {
           && request.resource.data.get('hotScore', 0) == 0;
     }
 
+    // T6：写 story 时校验其 storybookId 指向的故事书属于本人。
+    // 规则里的 get()/exists() 不受安全规则约束，可直读真实 ownerId。
+    function storybookOwned(sbId) {
+      return exists(/databases/$(database)/documents/storybooks/$(sbId))
+        && get(/databases/$(database)/documents/storybooks/$(sbId)).data.ownerId
+             == request.auth.uid;
+    }
+    // 防御性：迁移前旧 story 可能不带 storybookId，缺字段时放行（不强制）；
+    // 一旦带了就必须指向本人故事书。chapterName 带了须为 string。
+    function storyStorybookOk() {
+      return !('storybookId' in request.resource.data)
+        || storybookOwned(request.resource.data.storybookId);
+    }
+    function storyChapterOk() {
+      return !('chapterName' in request.resource.data)
+        || request.resource.data.chapterName is string;
+    }
+
     // ============================================================
     // users/{uid} —— 用户档案
     // ============================================================
@@ -70,11 +88,15 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
         && request.resource.data.authorId == request.auth.uid
-        && counterFieldsZeroOnCreate();
+        && counterFieldsZeroOnCreate()
+        && storyStorybookOk()
+        && storyChapterOk();
 
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
-        && counterFieldsUntouched();
+        && counterFieldsUntouched()
+        && storyStorybookOk()
+        && storyChapterOk();
 
       allow delete: if isSignedIn()
         && resource.data.authorId == request.auth.uid;
@@ -100,6 +122,35 @@ service cloud.firestore {
         allow create, delete: if isOwner(likeUid);
         allow update: if false;
       }
+    }
+
+    // ============================================================
+    // storybooks/{storybookId} —— 故事书元数据（T6，私有组织视图）
+    //   - 读：仅 owner（故事书不对外公开）
+    //   - coverUrl 仅 CF（uploadStorybookCover, Admin SDK）可写，前端禁动
+    //   - 默认书（isDefault==true）禁改名、禁删
+    // ============================================================
+    match /storybooks/{storybookId} {
+      allow read: if isSignedIn()
+        && request.auth.uid == resource.data.ownerId;
+
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.isDefault is bool
+        && request.resource.data.pinned is bool
+        && !('coverUrl' in request.resource.data);
+
+      allow update: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid
+        && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['coverUrl', 'ownerId', 'isDefault', 'createdAt'])
+        && (resource.data.isDefault == false
+            || request.resource.data.title == resource.data.title);
+
+      allow delete: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid
+        && resource.data.isDefault == false;
     }
 
     // ============================================================

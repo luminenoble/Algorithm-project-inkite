@@ -17,6 +17,13 @@ service firebase.storage {
       allow write: if false;
     }
 
+    // 故事书封面（T6）：CF uploadStorybookCover 写、客户端只读。
+    // read:true 使 firebaseDownloadUrl 拼出的免 token URL 可被 Image.network 直接加载。
+    match /storybook-covers/{file=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // 用户私有目录：本人可写、所有人可读（如头像）
     match /users/{uid}/{file=**} {
       allow read: if true;
