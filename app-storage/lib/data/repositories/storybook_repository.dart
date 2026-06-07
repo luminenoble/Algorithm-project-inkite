@@ -146,8 +146,13 @@ class StorybookRepository {
     // 确保默认书存在，作为迁移落点。
     final defaultBook = await getOrCreateDefault(book.ownerId);
 
-    final owned =
-        await _stories.where('storybookId', isEqualTo: storybookId).get();
+    // 必须带 authorId 过滤：stories 读规则要求查询能静态证明命中
+    // authorId == uid，否则整条 list query 会被安全规则拒绝
+    // （permission-denied）。删除书的人即 owner，其 uid == book.ownerId。
+    final owned = await _stories
+        .where('authorId', isEqualTo: book.ownerId)
+        .where('storybookId', isEqualTo: storybookId)
+        .get();
 
     final batch = FirebaseFirestore.instance.batch();
     for (final doc in owned.docs) {
