@@ -37,7 +37,7 @@
 |------|------|----|---------------|-----------|
 | 禅意阁 | hall | `zen` | 松 / 月 / 石 | `rooms ∋ zen_garden` |
 | 机关坊 | hall | `steampunk` | 齿轮 / 黄铜 / 蒸汽 | — |
-| 水墨轩 | hall | `ink` | 云 / 雨 / 远山 | — |
+| 水墨轩 | hall | `ink` | 月 / 云生 / 海楼 | — | ← 绑定挑战 `v0mZD0nPjPcTQ7TqU6PV`「月下飞天镜•云生结海楼」
 | 牛皮纸 | paper | `kraft` | 秋 / 霜 / 信笺 | — |
 | 雪浪笺 | paper | `snow`（新增） | 雪 / 梅 / 夜 | — |
 | 朱砂 | ink | `vermilion` | 火 / 朱 / 印 | — |

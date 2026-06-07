@@ -77,9 +77,11 @@ const galleryHalls = <GalleryHall>[
   GalleryHall(
     id: 'ink',
     name: '水墨轩',
-    subtitle: '云 · 雨 · 远山',
+    subtitle: '月 · 云生 · 海楼',
     glyph: OrigamiGlyph.pen,
     style: 'ink',
-    unlockWords: ['云', '雨', '远山'],
+    // 绑定官方挑战「月下飞天镜•云生结海楼」(challengeId v0mZD0nPjPcTQ7TqU6PV)。
+    // 发布该挑战故事即解锁水墨轩，发放折纸 style=ink 正好落进此馆。
+    unlockWords: ['月', '云生', '海楼'],
   ),
 ];
