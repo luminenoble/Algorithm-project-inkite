@@ -1,0 +1,5 @@
+# ISR 导出的角色清单（由 jobs/export_characters.py 生成，体量大且可再生，不入仓）
+characters_input.json
+# 任何误放进来的凭证
+*adminsdk*.json
+*service-account*.json
