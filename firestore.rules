@@ -131,8 +131,11 @@ service cloud.firestore {
     //   - 默认书（isDefault==true）禁改名、禁删
     // ============================================================
     match /storybooks/{storybookId} {
+      // resource == null：允许 get() 一个尚不存在的默认书（getOrCreateDefault
+      // 的存在性检查）。Firestore 对不存在文档的 get 会以 resource=null 评估，
+      // 直接解引用 resource.data 会因 null 而拒绝，故须显式放行。
       allow read: if isSignedIn()
-        && request.auth.uid == resource.data.ownerId;
+        && (resource == null || request.auth.uid == resource.data.ownerId);
 
       allow create: if isSignedIn()
         && request.resource.data.ownerId == request.auth.uid
