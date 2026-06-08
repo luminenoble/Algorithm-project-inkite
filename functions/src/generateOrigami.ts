@@ -254,17 +254,17 @@ export async function runReplicate(
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20_000);
+  const timer = setTimeout(() => controller.abort(), 30_000);
 
   try {
     const createRes = await fetch(
-      "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
+      "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          // 同步等结果（Flux Schnell 单图 ~1–2s，远低于 60s 同步上限）
+          // flux-1.1-pro 出图约 8–15s，仍在 60s 同步上限内
           Prefer: "wait",
         },
         body: JSON.stringify({
@@ -272,9 +272,8 @@ export async function runReplicate(
             prompt,
             aspect_ratio: "1:1",
             output_format: "png",
+            output_quality: 90,
             num_outputs: 1,
-            // bf16 全精度：默认 go_fast:true 走 fp8 更快但更糊，演示重质量。
-            go_fast: false,
           },
         }),
         signal: controller.signal,
