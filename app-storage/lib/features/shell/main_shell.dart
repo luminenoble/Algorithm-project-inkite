@@ -7,7 +7,7 @@ import '../../theme/skin_controller.dart';
 import '../../widgets/origami_icon.dart';
 import '../../widgets/origami_icons.dart';
 
-/// 底部 Tab 主框架。包裹 4 个核心 Tab 的导航。
+/// 底部 Tab 主框架。包裹 5 个核心 Tab 的导航。
 ///
 /// 折纸底栏（`docs/fronted-design.md` §3.2 / §11）：纸面色调 + 折纸造型图标，
 /// 选中态朱砂高亮 + 微缩放点按反馈；切 Tab 按索引差设定翻书折叠方向。
@@ -16,9 +16,11 @@ class MainShell extends StatelessWidget {
 
   final Widget child;
 
+  // 语义递进「创作→社区→探索→收藏→我的」；放大镜 lens 贴合「开拓」检索语义。
   static const _tabs = <_TabSpec>[
     _TabSpec('/writing', '写作', OrigamiGlyph.pen),
     _TabSpec('/square', '广场', OrigamiGlyph.bird),
+    _TabSpec('/explore', '开拓', OrigamiGlyph.lens),
     _TabSpec('/gallery', '展览厅', OrigamiGlyph.box),
     _TabSpec('/me', '我的', OrigamiGlyph.seal),
   ];
@@ -110,8 +112,12 @@ class _TabItem extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             spec.label,
+            maxLines: 1,
+            overflow: TextOverflow.fade,
+            softWrap: false,
+            // 5 Tab 均分 62px Row：字号 12→11 防「展览厅」三字挤换行。
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: color,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
             ),

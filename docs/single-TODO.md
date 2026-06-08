@@ -100,6 +100,13 @@ UserProfile{ displayName, photoURL?, createdAt, stats{storiesCount,likesReceived
 
 ### 0.3 模块 G 砍除的具体动作（R1 顺手做掉）
 
+> **⟳ 更新（已复活）**：模块 G 已以**方案 A 形态复活为「开拓」栏**，详见
+> `docs/角色查询-todo.md`。底栏新增第 5 个 Tab `/explore`，角色卡数据由离线脚本
+> `functions/scripts/import_characters.mjs` 从 ISR-scraper 聚合灌入 `charactersCache`，
+> app 端只读 Firestore（不连在线后端，与零成本一致）。下列「砍除」记录留作沿革；
+> `charactersCache` / `CharactersCacheRepository` / `character_cache.dart` 不再是「保留未用」，
+> 已接回 `features/explore/`。
+
 1. 删 `lib/features/character/character_screen.dart`（或保留文件但从路由摘除）。
 2. `main_shell.dart` 的 Tab 列表与 `app_router.dart` 当前**本就没有** `/character` 路由（角色查询原计划嵌在「我的」或独立入口），确认无残留引用即可。
 3. `charactersCache` 集合 / `CharactersCacheRepository` / `character_cache.dart` **保留不删**（不影响编译，留作后续可选），但本 TODO 后续任务一律不依赖它。
@@ -137,6 +144,7 @@ UserProfile{ displayName, photoURL?, createdAt, stats{storiesCount,likesReceived
 | E | R13 | **T1.10a** 收紧 `firestore.rules` / `storage.rules` + 部署复合索引 | 越权被拒、查询无缺索引报错 |
 | E | R14 | **T1.10b** 演示种子数据脚本（挑战 / 故事 / 点赞评论 / 折纸）+ 全量自测 | 广场 / 排行榜 / 画廊有内容 |
 | F 演示 | R15 | **T1.11** 部署 Functions + 录制端到端演示视频（Windows release 构建）+ 演示前 `recomputeHotScores` 刷榜 + 兜底预案 | **交付** |
+| ＋ 开拓 | R10.5（穿插） | **「开拓」栏（方案 A，复活模块 G）**：底栏 5 Tab + `/explore` 路由 + 角色卡数据层（searchByName/listPopular）+ 落地/详情页 + `import_characters.mjs` 离线导入（先 Emulator 验证）。详见 `docs/角色查询-todo.md`，工作记录 `docs/角色卡/` | 进开拓搜「hu」召回胡桃，详情外链可开；空库优雅降级 |
 
 > 缓冲策略：若某段超时，**牺牲顺序为** T4.3/T4.4（主题房间 + 魔法墨水视觉）→ Replicate 备用路径（只留预生成池）→ 评论删除等次要交互。**绝不牺牲**：登录、写作发布、广场列表、点赞、排行榜、折纸预生成发放。
 
