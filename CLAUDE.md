@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-本文件用于指导 Claude Code 在本仓库中协作。新会话开始时优先读取本文件。英文思考，中文输出。
+本文件用于指导 Claude Code 在本仓库中协作。新会话开始时优先读取本文件。
 
 ---
 
@@ -16,7 +16,7 @@
 - **通道广场**：故事发布后进入社区动态，支持点赞、评论、排行榜
 - **自由创作**：随机词生成器，无限灵感入口
 - **展览厅**：完成官方挑战奖励 AI 生成折纸藏品；解锁魔法墨水与主题房间
-- ~~**角色查询**：Wikipedia + Reddit 多源聚合（原模块 G）~~ —— **已于单人重排中砍除**（见 `docs/single-TODO.md` §0.3）。`charactersCache` 集合 / `CharactersCacheRepository` / `character_cache.dart` 保留在仓库但不接入 UI，`character_screen.dart` 从路由摘除，留作后续可选。
+- **开拓（角色查询）**：原模块 G 已以**「开拓」栏（方案 A：预爬 + 缓存查询）复活**（见 `docs/角色查询-todo.md`）。底栏第 5 个 Tab，路由 `/explore`；角色卡数据由离线脚本 `functions/scripts/import_characters.mjs` 从姊妹项目 ISR-scraper 聚合灌入 `charactersCache`，app 端只读 Firestore（不连任何在线后端，与 §6 零成本一致）。`CharacterCache` / `CharactersCacheRepository` 已接回 UI；旧占位屏 `features/character/character_screen.dart` 仍保留未用。
 
 **技术栈**：Flutter（客户端）+ Firebase（Auth / Firestore / Cloud Storage / Cloud Functions）+ Replicate Flux Schnell（AI 生成，备用）
 
@@ -76,7 +76,7 @@
 │   └── P4/                         # 游戏化模块任务（T4.1–T4.4）
 ├── functions/                      # Cloud Functions 子工程（代码已交付，演示前才 deploy）
 │   ├── src/                        # index/triggers/hotScore/recompute/userStats/aiQuota/generateOrigami/generateAiOrigami
-│   ├── scripts/                    # seed_challenge.mjs（官方挑战发布）/ replicate-probe.mjs
+│   ├── scripts/                    # seed_challenge.mjs（官方挑战发布）/ replicate-probe.mjs / import_characters.mjs（开拓角色卡导入）
 │   ├── package.json
 │   └── tsconfig.json
 └── app-storage/                    # Flutter 工程根目录（T1.3 初始化）
@@ -97,15 +97,16 @@ app-storage/
 │   ├── data/                       # 数据访问层（T1.6，接口已冻结，禁改字段名）
 │   │   ├── models/                 # story / challenge / story_comment / story_like /
 │   │   │                           #   origami / user_profile / character_cache（保留未用）
-│   │   └── repositories/           # 各集合 Repository 单例（含 characters_cache_repository，保留未用）
+│   │   └── repositories/           # 各集合 Repository 单例（characters_cache_repository 已接回开拓栏）
 │   └── features/
 │       ├── auth/                   # 登录屏（T1.5）
-│       ├── shell/                  # 底部 Tab 主框架（4 Tab）
+│       ├── shell/                  # 底部 Tab 主框架（5 Tab，含「开拓」）
 │       ├── writing/                # 写作（P2，落地待做）
 │       ├── square/                 # 社区广场（P3，落地待做）
+│       ├── explore/               # 开拓栏：角色卡检索 + 详情（方案 A，复活模块 G）
 │       ├── gallery/                # 展览厅（P4，落地待做）
 │       ├── me/                     # 我的 Tab（已展示档案 + 登出）
-│       └── character/              # ⚠ 模块 G 占位屏，已从路由摘除（保留文件，不接入 UI）
+│       └── character/              # ⚠ 模块 G 旧占位屏，未接入 UI（功能已迁至 explore/）
 ├── windows/                        # Windows 桌面平台（主交付）
 │   ├── CMakeLists.txt
 │   ├── flutter/

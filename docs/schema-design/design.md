@@ -156,15 +156,33 @@ AI 折纸藏品实例。每完成一次官方挑战由 Cloud Function `generateO
 
 ## 7. `charactersCache/{characterKey}`
 
-角色查询缓存。`characterKey` 建议为 normalized 名称（小写、空格 → 下划线）。
+角色查询缓存。模块 G 已以「开拓」栏（方案 A：预爬 + 缓存查询）复活，详见
+`docs/角色查询-todo.md`。数据由离线导入脚本 `functions/scripts/import_characters.mjs`
+从姊妹项目 ISR-scraper 多源聚合写入（Admin SDK 绕规则）；**客户端只读**。
+
+`characterKey`（文档 ID）= normalized 名称：小写、去标点、空白 → 单下划线。
+例 `"Hu Tao"` → `hu_tao`。与 ISR 的 `doc_id`（sha1(url)）不同——app 端按角色名查询。
+
+旧 5 字段（`name` / `wikiSummary` / `wikiUrl` / `redditPosts` / `cachedAt`）保持
+向后兼容不动；新增字段全部可空、缺省安全默认（接口冻结，见 `CharacterCache.fromFirestore`）。
 
 | 字段 | 类型 | 必填 | 维护方 | 说明 |
 |------|------|------|--------|------|
-| `name` | string | 是 | CF / 模块 G | 角色名 |
-| `wikiSummary` | string | 是 | CF / 模块 G | Wikipedia 摘要 |
-| `wikiUrl` | string | 是 | CF / 模块 G | Wikipedia 链接 |
-| `redditPosts` | array&lt;object&gt; | 否 | CF / 模块 G | Reddit 帖子缓存（结构由模块 G 定义） |
-| `cachedAt` | timestamp | 是 | CF / 模块 G | 缓存时间，用于 TTL 判定 |
+| `name` | string | 是 | 导入脚本 | 角色名（展示用，保留原大小写） |
+| `wikiSummary` | string | 是 | 导入脚本 | 官方权威摘要（ISR `HitCard.snippet_plain`，或 `DocDetail.body` 截断 ~800 字符） |
+| `wikiUrl` | string | 是 | 导入脚本 | 官方条目链接（ISR `DocDetail.url`） |
+| `redditPosts` | array&lt;object&gt; | 否 | 导入脚本 | 民间二创要点；每项 `{ title, url, snippet, source, tag }`，source∈{reddit,ao3} |
+| `cachedAt` | timestamp | 是 | 导入脚本 | 导入时间（`serverTimestamp()`） |
+| `source` | string | 否 | 导入脚本 | 主条目来源（fandom/wikipedia）；徽标配色锚点 |
+| `tag` | string | 否 | 导入脚本 | canon/fanon/meta/crossover（ISR `Hit.tag`） |
+| `popularity` | number | 否 | 导入脚本 | ISR popularity，「开拓」落地页热度排序（`listPopular` 降序取） |
+| `obscurity` | number | 否 | 导入脚本 | ISR obscurity（冷门度），可做「发现冷门角色」入口 |
+| `searchTokens` | array&lt;string&gt; | 是 | 导入脚本 | 角色名 normalize 后的累进前缀 + 分词，供 app 端 `array-contains` 名称搜索 |
+
+**`searchTokens` 生成规则**：取角色名小写，对整名（含空格）与各分词分别生成累进前缀
+（上限 12 字符）并去重。app 端 `where('searchTokens', arrayContains: queryLower).limit(N)`
+做前缀搜索——单字段 `array-contains` 不需复合索引；`listPopular` 按 `popularity DESC`
+单字段排序亦不需要（若后续加 `tag` 过滤 + 排序，再补 `firestore.indexes.json`）。
 
 ---
 
