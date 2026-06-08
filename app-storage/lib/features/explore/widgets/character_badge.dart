@@ -44,6 +44,7 @@ class CharacterBadge extends StatelessWidget {
 
   static Color sourceColor(AppSkin skin, String source) {
     switch (source.toLowerCase()) {
+      case 'wiki':
       case 'wikipedia':
       case 'fandom':
         return skin.accentVermilion;
@@ -73,6 +74,7 @@ class CharacterBadge extends StatelessWidget {
 
   static String _sourceLabel(String source) {
     switch (source.toLowerCase()) {
+      case 'wiki':
       case 'wikipedia':
         return 'Wikipedia';
       case 'fandom':

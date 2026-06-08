@@ -25,9 +25,14 @@
 //        --isr http://localhost:8000 --size 8 --reddit 5 --limit 500 --dry-run
 
 import { readdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+
+// 脚本自身所在目录（functions/scripts/），用于解析默认输入路径，
+// 不依赖运行时 CWD —— export_characters.py 默认写到此处的 seed/。
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 
 // ─── CLI 解析 ─────────────────────────────────────────────────────────────────
 
@@ -50,7 +55,11 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv.slice(2));
 const ISR_BASE = (args["isr"] ?? "http://localhost:8000").replace(/\/$/, "");
-const INPUT = args["input"] ?? "./seed/characters_input.json";
+// 默认输入 = 脚本旁 seed/characters_input.json（export 默认写出处）；
+// --input 传相对路径时仍按运行时 CWD 解析。
+const INPUT = args["input"]
+  ? resolve(args["input"])
+  : resolve(SCRIPT_DIR, "seed/characters_input.json");
 const CARDS_SIZE = parseInt(args["size"] ?? "8", 10);
 const REDDIT_MAX = parseInt(args["reddit"] ?? "5", 10);
 const LIMIT = args["limit"] ? parseInt(args["limit"], 10) : Infinity;
@@ -137,13 +146,15 @@ async function buildCharacterDoc(name) {
   const hits = cards.hits ?? [];
   if (hits.length === 0) return null;
 
-  // 主条目：source ∈ {wikipedia,fandom} 且 tag=canon 的最高分；逐级回退。
+  // 主条目：官方来源 + tag=canon 的最高分；逐级回退。
+  // 注意 ISR 实际 source 值为 "wiki"（Wikipedia）/"fandom"，无 "wikipedia"。
+  const OFFICIAL = ["wiki", "wikipedia", "fandom"];
   const officialCanon = hits.find(
-    (h) => ["wikipedia", "fandom"].includes((h.source ?? "").toLowerCase()) &&
+    (h) => OFFICIAL.includes((h.source ?? "").toLowerCase()) &&
       (h.tag ?? "").toLowerCase() === "canon",
   );
   const official = hits.find((h) =>
-    ["wikipedia", "fandom"].includes((h.source ?? "").toLowerCase()),
+    OFFICIAL.includes((h.source ?? "").toLowerCase()),
   );
   const main = officialCanon ?? official ?? hits[0];
 
