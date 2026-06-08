@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/login_screen.dart';
+import '../features/explore/character_detail_screen.dart';
+import '../features/explore/explore_screen.dart';
 import '../features/gallery/gallery_screen.dart';
 import '../features/gallery/zen_garden_screen.dart';
 import '../features/me/me_screen.dart';
@@ -110,6 +112,22 @@ final appRouter = GoRouter(
               path: 'rank',
               pageBuilder: (_, state) => foldPage(state, const RankScreen(),
                   direction: FoldDirection.forward),
+            ),
+          ],
+        ),
+        // 「开拓」栏（方案 A）：角色卡检索落地页 + 角色详情子页。
+        GoRoute(
+          path: '/explore',
+          pageBuilder: (_, state) => foldPage(state, const ExploreScreen()),
+          routes: [
+            GoRoute(
+              path: 'character/:key',
+              pageBuilder: (_, state) => foldPage(
+                state,
+                CharacterDetailScreen(
+                    characterKey: state.pathParameters['key']!),
+                direction: FoldDirection.forward,
+              ),
             ),
           ],
         ),
