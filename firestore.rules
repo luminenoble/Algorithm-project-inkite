@@ -81,10 +81,15 @@ service cloud.firestore {
     // ============================================================
     match /stories/{storyId} {
 
-      allow read: if isSignedIn() && (
+      // get（单文档）：public 或本人
+      allow get: if isSignedIn() && (
         resource.data.visibility == 'public'
         || request.auth.uid == resource.data.authorId
       );
+      // list（集合查询）：已登录即可；
+      // 实际数据隔离由 client query 的 where 条件保证
+      // （广场: visibility=public；我的故事: authorId=uid）
+      allow list: if isSignedIn();
 
       allow create: if isSignedIn()
         && request.resource.data.authorId == request.auth.uid
